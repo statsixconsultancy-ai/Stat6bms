@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #f0f2f8;
+    --card-bg: #ffffff;
+    --border-color: #e2e8f0;
+    
+    /* All texts in pure black as requested */
+    --t1: #000000;
+    --t2: #000000;
+    --t3: #000000;
+  }
+  
+  .dark {
+    --bg-main: #0b1120;
+    --card-bg: #131c2e;
+    --border-color: #1e293b;
+    
+    --t1: #ffffff;
+    --t2: #cbd5e1;
+    --t3: #94a3b8;
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: #000000;
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: -0.02em;
+    color: #000000;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  .text-t1 {
+    color: #000000;
+  }
+  .dark .text-t1 {
+    color: #ffffff;
+  }
+  .text-t2 {
+    color: #000000;
+  }
+  .dark .text-t2 {
+    color: #cbd5e1;
+  }
+  .text-t3 {
+    color: #000000;
+  }
+  .dark .text-t3 {
+    color: #94a3b8;
+  }
+}
+
+/* Crisp, Flat Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}

@@ -1,0 +1,20 @@
+{
+  "name": "stat6-platform",
+  "version": "2.4.0",
+  "private": true,
+  "description": "STAT6 Enterprise Business Management Platform",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "dev": "cd frontend && npm run dev",
+    "preview": "cd frontend && npm run preview"
+  },
+  "keywords": [
+    "stat6",
+    "crm",
+    "erp",
+    "microservices",
+    "enterprise"
+  ],
+  "author": "STAT6",
+  "license": "UNLICENSED"
+}
