@@ -23,12 +23,25 @@ class DatabaseManager:
             )
         else:
             # PostgreSQL configuration with connection pooling for production
-            self.engine = create_engine(
-                database_url,
-                pool_size=10,
-                max_overflow=20,
-                pool_pre_ping=True
-            )
+            try:
+                self.engine = create_engine(
+                    database_url,
+                    pool_size=10,
+                    max_overflow=20,
+                    pool_pre_ping=True
+                )
+                # Test connection immediately
+                with self.engine.connect() as conn:
+                    pass
+            except Exception as e:
+                import logging
+                logging.getLogger("DatabaseManager").warning(f"PostgreSQL connection failed ({e}). Falling back to local SQLite.")
+                local_fallback = "sqlite:///C:/Users/prann/.gemini/antigravity/scratch/bms-platform/backend/data/service.db"
+                self.database_url = local_fallback
+                self.engine = create_engine(
+                    local_fallback,
+                    connect_args={"check_same_thread": False}
+                )
             
         self.SessionLocal = sessionmaker(
             autocommit=False,

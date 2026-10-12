@@ -1,7 +1,9 @@
 import os
 import sys
 import uuid
-from typing import Optional, List
+import json
+from datetime import datetime, timedelta
+from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -20,8 +22,12 @@ from common.middleware import setup_microservice_middleware
 from services.ai_copilot_service.models import AnomalyInsight, CopilotQueryLog
 from services.ai_copilot_service.schemas import (
     CopilotQueryRequest, CopilotQueryResponse,
-    AnomalyInsightResponse, CopilotSuggestionResponse
+    AnomalyInsightResponse, CopilotSuggestionResponse,
+    ChatbotRequest, ChatbotResponse, ScheduledTaskSummary, ChatMessage,
+    DataTable, ConfirmationCard
 )
+from services.ai_copilot_service.engine import default_engine
+from services.ai_copilot_service.tools.registry import default_registry
 from services.ai_copilot_service.seed import seed_ai_copilot_data
 
 config = get_service_config("ai-copilot-service", default_port=8013, db_filename="ai_copilot.db")
@@ -68,70 +74,33 @@ def handle_copilot_query(
     Synthesizes enterprise data across all 14 BMS microservices to answer
     operational, commercial, financial, and strategic queries.
     """
-    q = req.query.lower()
+    res = default_engine.process_request(
+        message=req.query,
+        page_context={"module": req.context_domain or "overview"},
+        user_ctx=user_ctx
+    )
 
-    if any(k in q for k in ["revenue", "finance", "invoice", "cash", "profit"]):
-        intent = "FINANCIAL_INTELLIGENCE"
-        answer = "Current FY26 YTD Paid Revenue stands at $580,000.00 across 3 settled enterprise client accounts. Operating cash reserves total $1,540,950.00 with a 93.3% net operating margin. Zero rounding discrepancies in double-entry general ledger."
-        sources = ["finance-service:8006", "general-ledger"]
-        metrics = {"total_paid_revenue": 580000.0, "cash_reserves": 1540950.0, "operating_margin_percent": 93.3}
-        recs = [
-            "Follow up on outstanding Invoice INV-2026-002 ($125,000) due October 15.",
-            "Transfer $500,000 idle operating cash to high-yield treasury account."
-        ]
-
-    elif any(k in q for k in ["pipeline", "deal", "crm", "sales", "lead"]):
-        intent = "COMMERCIAL_VELOCITY"
-        answer = "Active commercial sales pipeline is valued at $825,000.00 across 4 enterprise engagements. Closed-won deals include Nexus Robotics ($450,000.00). Overall win rate currently tracks at 33.3% with 3 qualified leads."
-        sources = ["crm-service:8002", "marketing-service:8003"]
-        metrics = {"pipeline_value": 825000.0, "won_revenue": 450000.0, "win_rate": 33.3}
-        recs = [
-            "Accelerate final contract signing on Enterprise Quantum Cloud Cluster ($250,000).",
-            "Follow up on high-scoring inbound lead Maya Lin (Starlight Genomics)."
-        ]
-
-    elif any(k in q for k in ["inventory", "stock", "hardware", "warehouse", "procurement"]):
-        intent = "SUPPLY_CHAIN_INTELLIGENCE"
-        answer = "Total inventory valuation is $58,700.00 across 87 units across Boston and San Jose hubs. 1 low-stock anomaly detected on Jetson Tensor Compute Cores (8 units remaining vs 15 reorder floor). Replenishment PO auto-drafted."
-        sources = ["inventory-service:8007", "procurement-service:8008"]
-        metrics = {"total_units": 87, "valuation": 58700.0, "low_stock_alerts": 1}
-        recs = [
-            "Authorize drafted PO-AUTO-0002 with NVIDIA OEM to secure allocation.",
-            "Schedule physical audit for Haas CNC machining center."
-        ]
-
-    elif any(k in q for k in ["people", "employee", "team", "payroll", "hr"]):
-        intent = "PEOPLE_OPERATIONS"
-        answer = "Enterprise headcount stands at 4 active members across Engineering, R&D, Commercial, and Operations. September 2026 payroll completed with $80,666.68 gross and $64,533.34 net disbursements."
-        sources = ["hr-service:8005", "compliance-service:8011"]
-        metrics = {"headcount": 4, "monthly_payroll_gross": 80666.68, "departments": 4}
-        recs = [
-            "Review Marcus Chen's upcoming annual leave request for mid-October.",
-            "Initiate compensation benchmarking for Senior Security Researcher role."
-        ]
-
-    else:
-        intent = "EXECUTIVE_OVERVIEW"
-        answer = "AcroFlow Global Enterprises is operating with strong health. Commercial pipeline stands at $825,000 with $580,000 paid revenue. All 14 microservices report UP with zero network packet loss. SOC2 Type II compliance score is 100%."
-        sources = ["gateway:8000", "compliance-service:8011", "executive-cockpit"]
-        metrics = {"health": "100%", "active_microservices": 14, "soc2_score": 100.0}
-        recs = [
-            "Review high-priority Support Ticket TKT-2026-001 from Nexus Robotics.",
-            "Verify automated PO replenishment for hardware inventory."
-        ]
+    answer = res.get("reply", "")
+    intent = res.get("intent", "EXECUTIVE_COCKPIT")
+    sources = res.get("sources", ["gateway:8000"])
+    metrics = res.get("immediate_data", {})
+    recs = res.get("actions_suggested", [])
 
     # Log query
-    log = CopilotQueryLog(
-        id=str(uuid.uuid4()),
-        org_id=user_ctx.org_id,
-        user_id=user_ctx.user_id,
-        query_text=req.query,
-        intent=intent,
-        response_text=answer,
-        tool_calls_made=",".join(sources)
-    )
-    db.add(log)
-    db.commit()
+    try:
+        log = CopilotQueryLog(
+            id=str(uuid.uuid4()),
+            org_id=user_ctx.org_id,
+            user_id=user_ctx.user_id,
+            query_text=req.query,
+            intent=intent,
+            response_text=answer,
+            tool_calls_made=",".join(sources)
+        )
+        db.add(log)
+        db.commit()
+    except Exception:
+        db.rollback()
 
     return CopilotQueryResponse(
         query=req.query,
@@ -172,3 +141,109 @@ def get_strategic_suggestions(user_ctx: UserContext = Depends(get_user_context),
             suggested_action="Issue RFI to secondary sensor vendor to establish backup SLA."
         )
     ]
+
+
+# ----------------------------------------------------
+# 4. Omnipresent Agentic Chatbot Engine with Schema-Bound Tools & HITL
+# ----------------------------------------------------
+@app.get("/ai/tools")
+def list_available_tools(user_ctx: UserContext = Depends(get_user_context)):
+    """Returns the schema-bound tool catalogue permitted for the caller's authenticated role."""
+    tools = default_registry.list_tools(user_ctx.role)
+    return [
+        {
+            "name": t.name,
+            "description": t.description,
+            "category": t.category,
+            "side_effect": t.side_effect.value,
+            "output_tier": t.output_tier.value,
+            "approval_requirement": t.approval_requirement.value,
+            "approver_role": t.approver_role,
+            "parameters": t.args_schema.model_json_schema()
+        }
+        for t in tools
+    ]
+
+
+@app.post("/ai/chat", response_model=ChatbotResponse)
+def handle_chatbot_conversation(
+    req: ChatbotRequest,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    """
+    Omnipresent Agentic Chatbot:
+    1. Ingests natural language with DOM viewport context envelope.
+    2. Executes schema-bound tool contracts with Pydantic validation.
+    3. Enforces Tier 3 'Data Stays Home' privacy boundary for executive payroll/financials.
+    4. Handles temporal background scheduling with HITL governance gates.
+    """
+    page_ctx_dict = req.page_context.model_dump() if req.page_context else {}
+    history_list = [h.model_dump() for h in req.history] if req.history else []
+
+    result = default_engine.process_request(
+        message=req.message,
+        page_context=page_ctx_dict,
+        user_ctx=user_ctx,
+        history=history_list
+    )
+
+    # Record cryptographic query audit log
+    try:
+        log = CopilotQueryLog(
+            id=str(uuid.uuid4()),
+            org_id=user_ctx.org_id,
+            user_id=user_ctx.user_id,
+            query_text=req.message,
+            intent=result.get("intent", "GENERAL_ASSISTANT"),
+            response_text=result.get("reply", ""),
+            tool_calls_made=",".join(result.get("sources", []))
+        )
+        db.add(log)
+        db.commit()
+    except Exception:
+        db.rollback()
+
+    scheduled_summary = None
+    if result.get("scheduled_task"):
+        st = result["scheduled_task"]
+        scheduled_summary = ScheduledTaskSummary(
+            task_id=st.get("task_id"),
+            task_name=st.get("task_name"),
+            target_service=st.get("target_service"),
+            scheduled_for=st.get("scheduled_for"),
+            requires_hitl=st.get("requires_hitl", False),
+            hitl_approval_id=st.get("hitl_approval_id"),
+            status=st.get("status", "PENDING")
+        )
+
+    data_tbl = None
+    if result.get("data_table"):
+        dt = result["data_table"]
+        data_tbl = DataTable(
+            columns=dt.get("columns", []),
+            rows=dt.get("rows", [])
+        )
+
+    conf_card = None
+    if result.get("confirmation_card"):
+        cc = result["confirmation_card"]
+        conf_card = ConfirmationCard(
+            action=cc.get("action", "CONFIRM"),
+            title=cc.get("title", ""),
+            details=cc.get("details", "")
+        )
+
+    return ChatbotResponse(
+        reply=result.get("reply", ""),
+        intent=result.get("intent", "EXECUTIVE_COCKPIT"),
+        immediate_data=result.get("immediate_data", {}),
+        scheduled_task=scheduled_summary,
+        data_table=data_tbl,
+        confirmation_card=conf_card,
+        sources=result.get("sources", []),
+        actions_suggested=result.get("actions_suggested", []),
+        output_tier=result.get("output_tier", "TIER_1_INTERNAL")
+    )
+
+

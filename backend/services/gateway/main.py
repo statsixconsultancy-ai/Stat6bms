@@ -288,7 +288,8 @@ async def reverse_proxy_handler(module: str, rest_of_path: str, request: Request
     body = await request.body()
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        timeout = 60.0 if module == "ai" else 15.0
+        async with httpx.AsyncClient(timeout=timeout) as client:
             downstream_resp = await client.request(
                 method=request.method,
                 url=target_url,
