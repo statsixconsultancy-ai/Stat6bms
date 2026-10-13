@@ -38,7 +38,16 @@ import {
 } from 'lucide-react';
 import { OmniCopilotDock, CopilotMessage } from './components/OmniCopilotDock';
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || "http://127.0.0.1:8000/api/v1";
+const getApiBase = (): string => {
+  const envVal = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_BASE_URL;
+  if (!envVal) return "http://127.0.0.1:8000/api/v1";
+  let base = String(envVal).trim();
+  if (!base.startsWith("http://") && !base.startsWith("https://")) {
+    base = `https://${base}`;
+  }
+  return base.endsWith("/api/v1") ? base : `${base.replace(/\/+$/, "")}/api/v1`;
+};
+const API_BASE = getApiBase();
 
 // ----------------------------------------------------
 // VECTOR ICONS (NO LUCIDE CLUTTER, NO EMOJIS)

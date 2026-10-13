@@ -40,7 +40,7 @@ def get_service_config(
     master_db_url = os.getenv("SUPABASE_DB_URL", os.getenv("DATABASE_URL"))
     
     db_url = os.getenv(service_env_var, master_db_url or f"sqlite:///{default_db_path}")
-    port = int(os.getenv(f"BMS_{service_name.upper().replace('-', '_')}_PORT", default_port))
+    port = int(os.getenv("PORT", default_port)) if service_name == "gateway" else int(os.getenv(f"BMS_{service_name.upper().replace('-', '_')}_PORT", default_port))
     
     return ServiceConfig(
         service_name=service_name,

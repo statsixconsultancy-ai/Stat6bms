@@ -16,7 +16,7 @@ import signal
 from typing import Dict, List
 
 SERVICES = [
-    {"name": "gateway", "port": 8000, "module": "services.gateway.main:app"},
+    {"name": "gateway", "port": int(os.getenv("PORT", 8000)), "module": "services.gateway.main:app"},
     {"name": "auth-service", "port": 8001, "module": "services.auth_service.main:app"},
     {"name": "crm-service", "port": 8002, "module": "services.crm_service.main:app"},
     {"name": "marketing-service", "port": 8003, "module": "services.marketing_service.main:app"},
