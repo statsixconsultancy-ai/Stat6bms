@@ -31,3 +31,26 @@ class ComplianceControl(TenantModel):
     name = Column(String(255), nullable=False)
     status = Column(String(50), default="Passed")  # Passed, In Review, Failed
     last_tested = Column(String(50), default="2026-09-20")
+
+
+class VaultSecret(TenantModel):
+    """
+    STAT6 Enterprise Password & Secrets Vault (Replaces Zoho Vault)
+    Stores credentials encrypted at rest with PBKDF2-HMAC-SHA256 authenticated cipher
+    and logs every reveal/rotation to the immutable AuditLog.
+    """
+    __tablename__ = "comp_vault_secrets"
+
+    name = Column(String(255), nullable=False, index=True)
+    category = Column(String(100), default="API_KEY", index=True)  # API_KEY, DATABASE_CREDENTIAL, OAUTH_SECRET, CLOUD_INFRA, CORPORATE_LOGIN
+    username = Column(String(255), nullable=True)
+    service_url = Column(String(500), nullable=True)
+    encrypted_payload = Column(Text, nullable=False)
+    masked_preview = Column(String(100), nullable=False)
+    environment = Column(String(50), default="PRODUCTION")  # PRODUCTION, STAGING, DEVELOPMENT
+    allowed_roles = Column(String(255), default="ADMIN,MANAGER")
+    rotation_days = Column(Integer, default=90)
+    last_rotated_at = Column(String(50), nullable=True)
+    access_count = Column(Integer, default=0)
+    created_by = Column(String(255), default="admin@acroflow.enterprise")
+

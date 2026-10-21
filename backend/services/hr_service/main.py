@@ -18,14 +18,18 @@ from common.security import get_user_context, UserContext
 from common.middleware import setup_microservice_middleware
 from common.event_bus import event_bus
 
-from services.hr_service.models import Department, Employee, AttendanceLog, LeaveRequest, PayrollRun, Payslip
+from services.hr_service.models import Department, Employee, AttendanceLog, LeaveRequest, PayrollRun, Payslip, OKR, JobOpening, Candidate
 from services.hr_service.schemas import (
     DepartmentCreate, DepartmentResponse,
     EmployeeCreate, EmployeeUpdate, EmployeeResponse,
     ClockInRequest, ClockOutRequest, AttendanceLogResponse,
     LeaveRequestCreate, LeaveDecisionRequest, LeaveRequestResponse,
     PayrollRunRequest, PayrollRunResponse, PayslipResponse,
-    HRHeadcountAnalyticsResponse
+    HRHeadcountAnalyticsResponse,
+    StatutoryPayrollCalculationRequest, StatutoryPayrollCalculationResponse,
+    OKRCreate, OKRUpdate, OKRResponse,
+    JobOpeningCreate, JobOpeningResponse,
+    CandidateCreate, CandidateStageUpdateRequest, CandidateResponse
 )
 from services.hr_service.seed import seed_hr_data
 
@@ -74,6 +78,12 @@ def list_departments(user_ctx: UserContext = Depends(get_user_context), db: Sess
 
 @app.post("/hr/departments", response_model=DepartmentResponse)
 def create_department(req: DepartmentCreate, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    existing = db.query(Department).filter(
+        (Department.org_id == user_ctx.org_id) & 
+        ((Department.name == req.name) | (Department.code == req.code))
+    ).first()
+    if existing:
+        return DepartmentResponse(**existing.to_dict())
     dept = Department(
         id=str(uuid.uuid4()),
         org_id=user_ctx.org_id,
@@ -85,6 +95,15 @@ def create_department(req: DepartmentCreate, user_ctx: UserContext = Depends(get
     db.commit()
     db.refresh(dept)
     return DepartmentResponse(**dept.to_dict())
+
+@app.delete("/hr/departments/{id}")
+def delete_department(id: str, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    dept = db.query(Department).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not dept:
+        raise HTTPException(status_code=404, detail="Department not found")
+    db.delete(dept)
+    db.commit()
+    return {"status": "success", "message": "Department deleted"}
 
 # ----------------------------------------------------
 # 3. Attendance & Leave Endpoints
@@ -98,10 +117,13 @@ def list_attendance(user_ctx: UserContext = Depends(get_user_context), db: Sessi
 def clock_in(req: ClockInRequest, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
     date_str = "2026-09-24"
     time_str = req.clock_in_time or "09:00 AM"
+    ip = req.ip_address or "127.0.0.1"
 
     log = db.query(AttendanceLog).filter_by(employee_id=req.employee_id, date=date_str, org_id=user_ctx.org_id).first()
     if log:
         log.clock_in = time_str
+        log.ip_address = ip
+        log.geofence_verified = True
     else:
         log = AttendanceLog(
             id=str(uuid.uuid4()),
@@ -109,7 +131,9 @@ def clock_in(req: ClockInRequest, user_ctx: UserContext = Depends(get_user_conte
             employee_id=req.employee_id,
             date=date_str,
             clock_in=time_str,
-            status="Present"
+            status="Present",
+            ip_address=ip,
+            geofence_verified=True
         )
         db.add(log)
     db.commit()
@@ -307,3 +331,217 @@ def get_employee(id: str, user_ctx: UserContext = Depends(get_user_context), db:
     if not emp:
         raise HTTPException(status_code=404, detail="Employee not found")
     return EmployeeResponse(**emp.to_dict())
+
+@app.delete("/hr/employees/{id}")
+def delete_employee(id: str, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    emp = db.query(Employee).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    db.delete(emp)
+    db.commit()
+    return {"status": "success", "message": "Employee deleted"}
+
+# ----------------------------------------------------
+# 5. Statutory Payroll Formula Engine
+# ----------------------------------------------------
+@app.post("/hr/payroll/calculate-statutory", response_model=StatutoryPayrollCalculationResponse)
+def calculate_statutory_payroll(req: StatutoryPayrollCalculationRequest):
+    """
+    Statutory Payroll Engine:
+    - Gross = Basic + Allowances
+    - PF = 12% of Basic
+    - ESI = 0.75% of Gross (if gross <= 21,000)
+    - Professional Tax (PT) = 200.0
+    - TDS = 10% of Gross (if gross > 50,000)
+    - Net Pay = Gross - Total Deductions
+    """
+    basic = req.basic_salary
+    allowances = req.allowances or 0.0
+    gross = basic + allowances
+
+    pf = round(basic * 0.12, 2)
+    esi = round(gross * 0.0075, 2) if gross <= 21000.0 else 0.0
+    pt = 200.0
+    tds = round(gross * 0.10, 2) if gross > 50000.0 else 0.0
+
+    total_deductions = round(pf + esi + pt + tds, 2)
+    net_pay = round(gross - total_deductions, 2)
+
+    return StatutoryPayrollCalculationResponse(
+        basic_salary=basic,
+        allowances=allowances,
+        gross_pay=gross,
+        pf_deduction=pf,
+        esi_deduction=esi,
+        professional_tax=pt,
+        tds_tax=tds,
+        total_deductions=total_deductions,
+        net_pay=net_pay
+    )
+
+# ----------------------------------------------------
+# 6. OKRs & Corporate Objectives Tracking
+# ----------------------------------------------------
+@app.get("/hr/okrs", response_model=List[OKRResponse])
+def list_okrs(user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    okrs = db.query(OKR).filter_by(org_id=user_ctx.org_id).all()
+    return [OKRResponse(**o.to_dict()) for o in okrs]
+
+@app.post("/hr/okrs", response_model=OKRResponse)
+def create_okr(
+    req: OKRCreate,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    okr = OKR(
+        id=str(uuid.uuid4()),
+        org_id=user_ctx.org_id,
+        title=req.title,
+        owner_id=req.owner_id,
+        quarter=req.quarter or "Q4-2026",
+        progress_percent=0.0,
+        status="On_Track",
+        key_results=req.key_results or "[]"
+    )
+    db.add(okr)
+    db.commit()
+    db.refresh(okr)
+    return OKRResponse(**okr.to_dict())
+
+@app.patch("/hr/okrs/{id}", response_model=OKRResponse)
+def update_okr_progress(
+    id: str,
+    req: OKRUpdate,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    okr = db.query(OKR).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not okr:
+        raise HTTPException(status_code=404, detail="OKR not found")
+
+    if req.progress_percent is not None:
+        okr.progress_percent = req.progress_percent
+        if req.progress_percent >= 100.0:
+            okr.status = "Completed"
+    if req.status is not None:
+        okr.status = req.status
+
+    db.commit()
+    db.refresh(okr)
+    return OKRResponse(**okr.to_dict())
+
+# ----------------------------------------------------
+# 7. ATS Recruitment Pipeline
+# ----------------------------------------------------
+@app.get("/hr/ats/openings", response_model=List[JobOpeningResponse])
+def list_job_openings(user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    openings = db.query(JobOpening).filter_by(org_id=user_ctx.org_id).all()
+    return [JobOpeningResponse(**j.to_dict()) for j in openings]
+
+@app.post("/hr/ats/openings", response_model=JobOpeningResponse)
+def create_job_opening(
+    req: JobOpeningCreate,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    opening = JobOpening(
+        id=str(uuid.uuid4()),
+        org_id=user_ctx.org_id,
+        title=req.title,
+        department_id=req.department_id,
+        positions_count=req.positions_count or 1,
+        status="Active",
+        min_experience_years=req.min_experience_years or 3
+    )
+    db.add(opening)
+    db.commit()
+    db.refresh(opening)
+    return JobOpeningResponse(**opening.to_dict())
+
+@app.get("/hr/ats/candidates", response_model=List[CandidateResponse])
+def list_candidates(user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    candidates = db.query(Candidate).filter_by(org_id=user_ctx.org_id).all()
+    return [CandidateResponse(**c.to_dict()) for c in candidates]
+
+@app.post("/hr/ats/candidates", response_model=CandidateResponse)
+def create_candidate(
+    req: CandidateCreate,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    cand = Candidate(
+        id=str(uuid.uuid4()),
+        org_id=user_ctx.org_id,
+        job_opening_id=req.job_opening_id,
+        first_name=req.first_name,
+        last_name=req.last_name,
+        email=req.email,
+        phone=req.phone,
+        stage="Screening",
+        rating=4.5,
+        resume_url=req.resume_url or f"https://resumes.stat6.cloud/{uuid.uuid4().hex[:8]}.pdf"
+    )
+    db.add(cand)
+    db.commit()
+    db.refresh(cand)
+    return CandidateResponse(**cand.to_dict())
+
+@app.patch("/hr/ats/candidates/{id}/stage", response_model=CandidateResponse)
+def update_candidate_stage(
+    id: str,
+    req: CandidateStageUpdateRequest,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    cand = db.query(Candidate).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    cand.stage = req.stage
+    db.commit()
+    db.refresh(cand)
+    return CandidateResponse(**cand.to_dict())
+
+@app.post("/hr/ats/candidates/{id}/convert-to-employee", response_model=EmployeeResponse)
+async def convert_candidate_to_employee(
+    id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    """
+    Seamless 1-Click ATS to Core HR Conversion:
+    Converts hired candidate into a fully onboarded employee record.
+    """
+    cand = db.query(Candidate).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    emp = Employee(
+        id=str(uuid.uuid4()),
+        org_id=user_ctx.org_id,
+        first_name=cand.first_name,
+        last_name=cand.last_name,
+        email=cand.email,
+        phone=cand.phone,
+        job_title="Software Development Engineer",
+        hire_date="2026-11-01",
+        employment_type="Full-Time",
+        salary_annual=140000.0,
+        status="Active"
+    )
+    db.add(emp)
+
+    cand.stage = "Hired"
+    cand.converted_employee_id = emp.id
+    db.commit()
+    db.refresh(emp)
+
+    await event_bus.publish("employee.hired", {
+        "employee_id": emp.id,
+        "name": f"{emp.first_name} {emp.last_name}",
+        "email": emp.email,
+        "job_title": emp.job_title
+    }, org_id=user_ctx.org_id)
+
+    return EmployeeResponse(**emp.to_dict())
+

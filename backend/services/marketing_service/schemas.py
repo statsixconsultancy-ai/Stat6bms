@@ -112,3 +112,58 @@ class MarketingROIResponse(BaseModel):
     blended_roi_percent: float
     total_conversions: int
     blended_cac: float
+
+# --- Drip Journey & Broadcast Schemas ---
+class DripJourneyCreate(BaseModel):
+    name: str
+    trigger_event: Optional[str] = "lead.captured"
+    steps_config: Optional[str] = '[{"step": 1, "channel": "email", "delay_hours": 0, "template": "Welcome"}, {"step": 2, "channel": "whatsapp", "delay_hours": 48, "template": "Demo Invite"}]'
+    is_active: Optional[bool] = True
+
+class DripJourneyResponse(BaseModel):
+    id: str
+    org_id: str
+    name: str
+    trigger_event: str
+    steps_config: str
+    is_active: bool
+    enrolled_count: int
+    completed_count: int
+
+class BroadcastCampaignCreate(BaseModel):
+    name: str
+    channel: Optional[str] = "email"
+    target_segment: Optional[str] = "All Leads"
+    message_template: str
+    scheduled_at: Optional[str] = None
+
+class BroadcastCampaignResponse(BaseModel):
+    id: str
+    org_id: str
+    name: str
+    channel: str
+    target_segment: str
+    message_template: str
+    scheduled_at: Optional[str] = None
+    status: str
+    recipient_count: int
+    delivered_count: int
+    open_rate: float
+    click_rate: float
+
+class ROIAttributionRequest(BaseModel):
+    campaign_id: str
+    deal_id: Optional[str] = None
+    invoice_id: Optional[str] = None
+    attributed_revenue: float
+    attribution_model: Optional[str] = "last_touch"  # first_touch, last_touch, linear
+    notes: Optional[str] = None
+
+class ROIAttributionResponse(BaseModel):
+    campaign_id: str
+    campaign_name: str
+    new_spend: float
+    new_attributed_revenue: float
+    calculated_roi_percent: float
+    attribution_status: str = "attributed"
+

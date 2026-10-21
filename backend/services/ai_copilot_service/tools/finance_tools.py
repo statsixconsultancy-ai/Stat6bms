@@ -22,7 +22,6 @@ class GetFinancialSummaryArgs(BaseModel):
 class FinancialSummaryOutput(BaseModel):
     total_paid_revenue: float
     total_invoiced: float
-    cash_reserves: float
     total_expenses: float
     net_operating_profit: float
     operating_margin_pct: float
@@ -70,8 +69,6 @@ def execute_get_financial_summary(args: GetFinancialSummaryArgs, user_ctx: Any) 
         overdue_invs = [i for i in invoices if i.status.lower() == "overdue"]
         overdue_amt = sum(i.balance_due or i.total_amount for i in overdue_invs)
 
-        # Baseline corporate cash reserves
-        cash_reserves = 1540950.0 + paid_rev - total_exp
         profit = paid_rev - total_exp
         margin = round((profit / paid_rev * 100), 1) if paid_rev > 0 else 0.0
 
@@ -90,7 +87,6 @@ def execute_get_financial_summary(args: GetFinancialSummaryArgs, user_ctx: Any) 
         return {
             "total_paid_revenue": paid_rev,
             "total_invoiced": total_inv,
-            "cash_reserves": max(cash_reserves, 500000.0),
             "total_expenses": total_exp,
             "net_operating_profit": profit,
             "operating_margin_pct": margin,
@@ -177,7 +173,7 @@ def execute_send_payment_reminder(args: SendPaymentReminderArgs, user_ctx: Any) 
 FINANCE_TOOLS = [
     ToolDefinition(
         name="get_financial_summary",
-        description="Query live corporate financial health, paid revenue, operating expenses, cash reserves, and overdue receivables.",
+        description="Query live corporate financial health, paid revenue, total invoiced, operating expenses, operating margin, and overdue receivables.",
         category="finance",
         args_schema=GetFinancialSummaryArgs,
         side_effect=SideEffect.READ,

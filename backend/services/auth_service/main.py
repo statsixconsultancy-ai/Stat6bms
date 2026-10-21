@@ -22,13 +22,30 @@ from common.security import (
 from common.middleware import setup_microservice_middleware
 from common.event_bus import event_bus
 
-from services.auth_service.models import Organization, User, Role, AuthAuditLog
+from services.auth_service.models import (
+    Organization,
+    User,
+    Role,
+    AuthAuditLog,
+    CustomFieldDefinition,
+    CustomObject,
+    CustomObjectRecord,
+    USER_PERSONAS,
+    DEFAULT_ENABLED_MODULES
+)
 from services.auth_service.schemas import (
     RegisterRequest,
     LoginRequest,
     TokenResponse,
     UserCreateRequest,
-    UserResponse
+    UserResponse,
+    OrganizationSettingsUpdateRequest,
+    CustomFieldCreateRequest,
+    CustomFieldResponse,
+    CustomObjectCreateRequest,
+    CustomObjectResponse,
+    CustomObjectRecordCreateRequest,
+    CustomObjectRecordResponse
 )
 from services.auth_service.seed import seed_auth_data
 
@@ -36,9 +53,9 @@ config = get_service_config("auth-service", default_port=8001, db_filename="auth
 db_mgr = create_db_manager(config.database_url)
 
 app = FastAPI(
-    title="BMS Auth & Identity Microservice",
-    description="Multi-Tenancy, User Provisioning, RBAC & Authentication Engine",
-    version="2.0.0"
+    title="STAT6 Auth & Multi-Persona Identity Engine",
+    description="Multi-Tenancy, 7 User Personas, RBAC, Custom Fields & Admin Settings",
+    version="2.4.0"
 )
 
 setup_microservice_middleware(app, "auth-service", config.cors_origins)
@@ -62,7 +79,13 @@ def get_db():
 # ----------------------------------------------------
 @app.get("/health")
 def health():
-    return {"service": "auth-service", "status": "UP", "port": config.service_port}
+    return {
+        "service": "auth-service",
+        "status": "UP",
+        "port": config.service_port,
+        "personas_supported": USER_PERSONAS,
+        "default_modules": len(DEFAULT_ENABLED_MODULES)
+    }
 
 @app.post("/webhooks/events")
 async def receive_event(event: dict):
@@ -91,7 +114,9 @@ async def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     org = Organization(
         name=req.org_name,
-        slug=req.org_slug
+        slug=req.org_slug,
+        currency=req.currency or "USD",
+        timezone=req.timezone or "UTC"
     )
     db.add(org)
     db.flush()
@@ -101,7 +126,8 @@ async def register(req: RegisterRequest, db: Session = Depends(get_db)):
         email=req.admin_email,
         full_name=req.admin_name,
         password_hash=hash_password(req.password),
-        role="superadmin"
+        role="superadmin",
+        persona=req.persona if req.persona in USER_PERSONAS else "ADMIN"
     )
     db.add(user)
     db.commit()
@@ -109,12 +135,18 @@ async def register(req: RegisterRequest, db: Session = Depends(get_db)):
     db.refresh(org)
 
     # Publish distributed event
-    await event_bus.publish("tenant.provisioned", {"org_id": org.id, "name": org.name, "admin_email": user.email})
+    await event_bus.publish("tenant.provisioned", {
+        "org_id": org.id,
+        "name": org.name,
+        "admin_email": user.email,
+        "persona": user.persona
+    })
 
     token = create_access_token({
         "sub": user.id,
         "org_id": org.id,
         "role": user.role,
+        "persona": user.persona,
         "email": user.email
     })
 
@@ -143,6 +175,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         "sub": user.id,
         "org_id": user.org_id,
         "role": user.role,
+        "persona": user.persona or "EMPLOYEE",
         "email": user.email
     })
 
@@ -167,15 +200,67 @@ def get_current_user_profile(
             "id": user_ctx.user_id,
             "org_id": user_ctx.org_id,
             "role": user_ctx.role,
+            "persona": "EMPLOYEE",
             "full_name": "Authenticated Member",
             "email": user_ctx.email,
-            "organization": org.to_dict() if org else {"id": user_ctx.org_id, "name": "AcroFlow"}
+            "organization": org.to_dict() if org else {"id": user_ctx.org_id, "name": "STAT6 Platform"}
         }
 
     return {
         "user": user.to_dict(),
         "organization": org.to_dict() if org else None
     }
+
+# ----------------------------------------------------
+# 3. Personas & Multi-User Provisioning
+# ----------------------------------------------------
+@app.get("/auth/personas")
+def get_user_personas():
+    """Returns metadata for all 7 supported STAT6 user personas."""
+    return [
+        {
+            "persona": "ADMIN",
+            "label": "Administrator",
+            "description": "Full access to Organization Setup, RBAC, Billing, Module Toggles & System Audit",
+            "portal_type": "INTERNAL"
+        },
+        {
+            "persona": "EMPLOYEE",
+            "label": "Internal Staff",
+            "description": "Role-scoped access to operational modules, Employee Self-Service, Attendance & Tasks",
+            "portal_type": "INTERNAL"
+        },
+        {
+            "persona": "MANAGER",
+            "label": "Department Manager",
+            "description": "Team oversight, Resource Capacity planner, multi-tier approvals & KPI dashboards",
+            "portal_type": "INTERNAL"
+        },
+        {
+            "persona": "CUSTOMER",
+            "label": "Customer / Client",
+            "description": "External Customer Portal: View/E-sign proposals, pay invoices, track project tasks & support tickets",
+            "portal_type": "EXTERNAL_PORTAL"
+        },
+        {
+            "persona": "VENDOR",
+            "label": "Supplier / Vendor",
+            "description": "External Vendor Portal: KYC onboarding, submit RFQ bids, acknowledge POs, submit vendor bills",
+            "portal_type": "EXTERNAL_PORTAL"
+        },
+        {
+            "persona": "PARTNER",
+            "label": "Channel Partner / Reseller",
+            "description": "External Partner Portal: Register partner deals, co-selling collateral, commission statements",
+            "portal_type": "EXTERNAL_PORTAL"
+        },
+        {
+            "persona": "EXTERNAL_USER",
+            "label": "External Guest / Auditor",
+            "description": "Time-boxed record-level guest access for external financial auditors, legal counsel, or contractors",
+            "portal_type": "GUEST"
+        }
+    ]
 
 @app.get("/auth/users", response_model=list[UserResponse])
 def list_tenant_users(
@@ -191,8 +276,324 @@ def list_tenant_users(
             email=u.email,
             full_name=u.full_name,
             role=u.role,
+            persona=u.persona or "EMPLOYEE",
+            phone=u.phone,
+            portal_profile=u.portal_profile,
             avatar_url=u.avatar_url,
             is_active=u.is_active
         )
         for u in users
     ]
+
+@app.post("/auth/users", response_model=UserResponse)
+def create_tenant_user(
+    req: UserCreateRequest,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    """Provision a new user under a specific Persona."""
+    existing = db.query(User).filter_by(org_id=user_ctx.org_id, email=req.email).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="User with this email already exists in organization.")
+    
+    user = User(
+        org_id=user_ctx.org_id,
+        email=req.email,
+        full_name=req.full_name,
+        password_hash=hash_password(req.password),
+        role=req.role,
+        persona=req.persona if req.persona in USER_PERSONAS else "EMPLOYEE",
+        phone=req.phone,
+        portal_profile=req.portal_profile or {}
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return UserResponse(
+        id=user.id,
+        org_id=user.org_id,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        persona=user.persona,
+        phone=user.phone,
+        portal_profile=user.portal_profile,
+        avatar_url=user.avatar_url,
+        is_active=user.is_active
+    )
+
+# ----------------------------------------------------
+# 4. Organization Settings & Module Configuration
+# ----------------------------------------------------
+@app.get("/auth/organization/settings")
+def get_org_settings(
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    """Retrieve full organization profile, branches, tax info, and active module toggles."""
+    org = db.query(Organization).filter_by(id=user_ctx.org_id).first()
+    if not org:
+        org = db.query(Organization).first()
+    if not org:
+        org = Organization(id=user_ctx.org_id, name="STAT6 Main Org", slug="stat6-main")
+        db.add(org)
+        db.commit()
+    return org.to_dict()
+
+@app.put("/auth/organization/settings")
+def update_org_settings(
+    req: OrganizationSettingsUpdateRequest,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    """Update organization multi-branch setup, tax IDs, fiscal calendar, or toggle modules."""
+    org = db.query(Organization).filter_by(id=user_ctx.org_id).first()
+    if not org:
+        org = db.query(Organization).first()
+    if not org:
+        org = Organization(id=user_ctx.org_id, name="STAT6 Main Org", slug="stat6-main")
+        db.add(org)
+        db.flush()
+    
+    if req.name is not None:
+        org.name = req.name
+    if req.industry is not None:
+        org.industry = req.industry
+    if req.currency is not None:
+        org.currency = req.currency
+    if req.timezone is not None:
+        org.timezone = req.timezone
+    if req.branches is not None:
+        org.branches = req.branches
+    if req.tax_identifiers is not None:
+        org.tax_identifiers = req.tax_identifiers
+    if req.fiscal_year_start is not None:
+        org.fiscal_year_start = req.fiscal_year_start
+    if req.white_label_domain is not None:
+        org.white_label_domain = req.white_label_domain
+    if req.branding_logo_url is not None:
+        org.branding_logo_url = req.branding_logo_url
+    if req.enabled_modules is not None:
+        org.enabled_modules = req.enabled_modules
+
+    db.commit()
+    db.refresh(org)
+    return org.to_dict()
+
+# ----------------------------------------------------
+# 5. Dynamic Custom Fields Engine (Zoho Creator Alt)
+# ----------------------------------------------------
+@app.get("/auth/custom-fields", response_model=list[CustomFieldResponse])
+def list_custom_fields(
+    module_name: str = None,
+    entity_type: str = None,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    """Retrieve custom fields configured for an entity type or module."""
+    query = db.query(CustomFieldDefinition).filter_by(org_id=user_ctx.org_id)
+    if module_name:
+        query = query.filter_by(module_name=module_name)
+    if entity_type:
+        query = query.filter_by(entity_type=entity_type)
+    fields = query.all()
+    return [
+        CustomFieldResponse(
+            id=f.id,
+            org_id=f.org_id,
+            module_name=f.module_name,
+            entity_type=f.entity_type,
+            field_name=f.field_name,
+            field_label=f.field_label,
+            field_type=f.field_type,
+            options=f.options,
+            is_required=f.is_required,
+            default_value=f.default_value
+        )
+        for f in fields
+    ]
+
+@app.post("/auth/custom-fields", response_model=CustomFieldResponse)
+def create_custom_field(
+    req: CustomFieldCreateRequest,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    """Define a new custom attribute on a business entity."""
+    field = CustomFieldDefinition(
+        org_id=user_ctx.org_id,
+        module_name=req.module_name,
+        entity_type=req.entity_type,
+        field_name=req.field_name,
+        field_label=req.field_label,
+        field_type=req.field_type,
+        options=req.options or [],
+        is_required=req.is_required,
+        default_value=req.default_value
+    )
+    db.add(field)
+    db.commit()
+    db.refresh(field)
+    return CustomFieldResponse(
+        id=field.id,
+        org_id=field.org_id,
+        module_name=field.module_name,
+        entity_type=field.entity_type,
+        field_name=field.field_name,
+        field_label=field.field_label,
+        field_type=field.field_type,
+        options=field.options,
+        is_required=field.is_required,
+        default_value=field.default_value
+    )
+
+@app.delete("/auth/custom-fields/{field_id}")
+def delete_custom_field(
+    field_id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    field = db.query(CustomFieldDefinition).filter_by(id=field_id, org_id=user_ctx.org_id).first()
+    if not field:
+        raise HTTPException(status_code=404, detail="Custom field definition not found.")
+    db.delete(field)
+    db.commit()
+    return {"status": "deleted", "field_id": field_id}
+
+# ----------------------------------------------------
+# 6. Low-Code Custom Objects Builder
+# ----------------------------------------------------
+@app.get("/auth/custom-objects", response_model=list[CustomObjectResponse])
+def list_custom_objects(
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    objects = db.query(CustomObject).filter_by(org_id=user_ctx.org_id).all()
+    return [
+        CustomObjectResponse(
+            id=o.id,
+            org_id=o.org_id,
+            object_name=o.object_name,
+            display_name=o.display_name,
+            description=o.description,
+            schema_definition=o.schema_definition or {},
+            records_count=o.records_count or 0
+        )
+        for o in objects
+    ]
+
+@app.post("/auth/custom-objects", response_model=CustomObjectResponse)
+def create_custom_object(
+    req: CustomObjectCreateRequest,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    obj = CustomObject(
+        org_id=user_ctx.org_id,
+        object_name=req.object_name,
+        display_name=req.display_name,
+        description=req.description,
+        schema_definition=req.schema_definition or {},
+        records_count=0
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return CustomObjectResponse(
+        id=obj.id,
+        org_id=obj.org_id,
+        object_name=obj.object_name,
+        display_name=obj.display_name,
+        description=obj.description,
+        schema_definition=obj.schema_definition or {},
+        records_count=0
+    )
+
+
+@app.get("/auth/custom-objects/{object_id}/records", response_model=list[CustomObjectRecordResponse])
+def list_custom_object_records(
+    object_id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    obj = db.query(CustomObject).filter(
+        (CustomObject.id == object_id) | (CustomObject.object_name == object_id),
+        CustomObject.org_id == user_ctx.org_id
+    ).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Custom object not found")
+
+    records = db.query(CustomObjectRecord).filter_by(
+        org_id=user_ctx.org_id,
+        object_id=obj.id
+    ).order_by(CustomObjectRecord.created_at.desc()).all()
+
+    return [
+        CustomObjectRecordResponse(
+            id=r.id,
+            org_id=r.org_id,
+            object_id=r.object_id,
+            object_name=r.object_name,
+            record_data=r.record_data or {},
+            created_by=r.created_by,
+            created_at=r.created_at.isoformat() if r.created_at else None
+        )
+        for r in records
+    ]
+
+
+@app.post("/auth/custom-objects/{object_id}/records", response_model=CustomObjectRecordResponse)
+def create_custom_object_record(
+    object_id: str,
+    req: CustomObjectRecordCreateRequest,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    obj = db.query(CustomObject).filter(
+        (CustomObject.id == object_id) | (CustomObject.object_name == object_id),
+        CustomObject.org_id == user_ctx.org_id
+    ).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Custom object not found")
+
+    rec = CustomObjectRecord(
+        org_id=user_ctx.org_id,
+        object_id=obj.id,
+        object_name=obj.object_name,
+        record_data=req.record_data or {},
+        created_by=user_ctx.email or "admin@acroflow.enterprise"
+    )
+    db.add(rec)
+    obj.records_count = (obj.records_count or 0) + 1
+    db.commit()
+    db.refresh(rec)
+
+    return CustomObjectRecordResponse(
+        id=rec.id,
+        org_id=rec.org_id,
+        object_id=rec.object_id,
+        object_name=rec.object_name,
+        record_data=rec.record_data or {},
+        created_by=rec.created_by,
+        created_at=rec.created_at.isoformat() if rec.created_at else None
+    )
+
+
+@app.delete("/auth/custom-objects/records/{record_id}")
+def delete_custom_object_record(
+    record_id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    rec = db.query(CustomObjectRecord).filter_by(id=record_id, org_id=user_ctx.org_id).first()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Custom object record not found")
+
+    obj = db.query(CustomObject).filter_by(id=rec.object_id, org_id=user_ctx.org_id).first()
+    if obj and (obj.records_count or 0) > 0:
+        obj.records_count -= 1
+
+    db.delete(rec)
+    db.commit()
+    return {"status": "deleted", "record_id": record_id}
+

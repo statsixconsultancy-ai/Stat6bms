@@ -1,4 +1,5 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+from datetime import datetime
 from pydantic import BaseModel
 
 # --- Lead Schemas ---
@@ -37,6 +38,9 @@ class LeadResponse(BaseModel):
     score: int
     assigned_to: str
     notes: Optional[str] = None
+    converted_contact_id: Optional[str] = None
+    converted_company_id: Optional[str] = None
+    converted_deal_id: Optional[str] = None
 
 class LeadConvertRequest(BaseModel):
     deal_title: Optional[str] = None
@@ -62,6 +66,7 @@ class ContactCreate(BaseModel):
     phone: Optional[str] = None
     job_title: Optional[str] = "Executive"
     is_primary: Optional[bool] = False
+    role_type: Optional[str] = "Decision Maker"
 
 class ContactResponse(BaseModel):
     id: str
@@ -73,6 +78,7 @@ class ContactResponse(BaseModel):
     phone: Optional[str] = None
     job_title: str
     is_primary: bool
+    role_type: str = "Decision Maker"
 
 class CompanyCreate(BaseModel):
     name: str
@@ -83,6 +89,7 @@ class CompanyCreate(BaseModel):
     annual_revenue: Optional[float] = 0.0
     tier: Optional[str] = "Tier 2"
     account_owner: Optional[str] = "Sales Lead"
+    parent_company_id: Optional[str] = None
 
 class CompanyResponse(BaseModel):
     id: str
@@ -95,6 +102,7 @@ class CompanyResponse(BaseModel):
     annual_revenue: float
     tier: str
     account_owner: str
+    parent_company_id: Optional[str] = None
 
 class CompanyDetailResponse(CompanyResponse):
     contacts: List[ContactResponse] = []
@@ -111,6 +119,9 @@ class DealCreate(BaseModel):
     probability: Optional[int] = 20
     close_date: Optional[str] = None
     owner: Optional[str] = "Account Executive"
+    pipeline_name: Optional[str] = "Standard Enterprise"
+    currency: Optional[str] = "USD"
+    stage_gate_checklist: Optional[Dict[str, Any]] = None
 
 class DealUpdate(BaseModel):
     title: Optional[str] = None
@@ -119,10 +130,12 @@ class DealUpdate(BaseModel):
     probability: Optional[int] = None
     close_date: Optional[str] = None
     owner: Optional[str] = None
+    stage_gate_checklist: Optional[Dict[str, Any]] = None
 
 class StageUpdateRequest(BaseModel):
     stage: str
     probability: Optional[int] = None
+    checklist_verification: Optional[Dict[str, bool]] = None
 
 class DealResponse(BaseModel):
     id: str
@@ -136,12 +149,26 @@ class DealResponse(BaseModel):
     probability: int
     close_date: Optional[str] = None
     owner: str
+    pipeline_name: str = "Standard Enterprise"
+    currency: str = "USD"
+    stage_gate_checklist: Dict[str, Any] = {}
+    converted_invoice_id: Optional[str] = None
+    converted_project_id: Optional[str] = None
 
-# --- Quote Schemas ---
+class DealConversionResponse(BaseModel):
+    deal_id: str
+    invoice_id: Optional[str] = None
+    project_id: Optional[str] = None
+    status: str
+    message: str
+
+# --- CPQ & E-Signature Schemas ---
 class QuoteItemCreate(BaseModel):
-    description: str
+    description: Optional[str] = None
+    item: Optional[str] = None
     quantity: int = 1
-    unit_price: float
+    unit_price: float = 0.0
+    total: Optional[float] = None
 
 class QuoteItemResponse(BaseModel):
     id: str
@@ -153,8 +180,14 @@ class QuoteItemResponse(BaseModel):
 class QuoteCreate(BaseModel):
     deal_id: Optional[str] = None
     company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    quote_number: Optional[str] = None
     valid_until: Optional[str] = None
-    items: List[QuoteItemCreate]
+    total_amount: Optional[float] = None
+    status: Optional[str] = "Draft"
+    tiered_discount_percent: Optional[float] = 0.0
+    items: Optional[List[QuoteItemCreate]] = None
+    line_items: Optional[List[QuoteItemCreate]] = None
 
 class QuoteResponse(BaseModel):
     id: str
@@ -166,9 +199,73 @@ class QuoteResponse(BaseModel):
     tax_rate: float
     tax_amount: float
     discount_amount: float
+    tiered_discount_percent: float = 0.0
+    margin_floor_approved: bool = True
     total_amount: float
     valid_until: Optional[str] = None
+    e_signature_status: str = "draft"
+    e_signature_audit: Dict[str, Any] = {}
     items: List[QuoteItemResponse] = []
+
+class QuoteESignRequest(BaseModel):
+    signer_name: str
+    signer_email: str
+    signer_role: Optional[str] = "Executive"
+    ip_address: Optional[str] = "127.0.0.1"
+    otp_code: Optional[str] = "123456"
+    signature_data: Optional[str] = "Signed electronically"
+
+class QuoteESignResponse(BaseModel):
+    quote_id: str
+    quote_number: str
+    e_signature_status: str
+    signed_at: str
+    audit_hash: str
+    signer_email: Optional[str] = None
+    e_signature_audit_hash: Optional[str] = None
+    message: str
+
+# --- Pipeline & Appointments Schemas ---
+class PipelineCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    is_default: bool = False
+    stages: List[Dict[str, Any]]
+
+class PipelineResponse(BaseModel):
+    id: str
+    org_id: str
+    name: str
+    description: Optional[str] = None
+    is_default: bool
+    stages: List[Dict[str, Any]]
+
+class AppointmentCreate(BaseModel):
+    contact_id: Optional[str] = None
+    deal_id: Optional[str] = None
+    title: str
+    host_email: Optional[str] = None
+    guest_name: Optional[str] = None
+    guest_email: Optional[str] = None
+    scheduled_at: Optional[Any] = None
+    scheduled_time: Optional[Any] = None
+    duration_minutes: int = 30
+    meeting_link: Optional[str] = None
+
+class AppointmentResponse(BaseModel):
+    id: str
+    org_id: str
+    contact_id: Optional[str] = None
+    deal_id: Optional[str] = None
+    host_user_id: Optional[str] = None
+    title: str
+    scheduled_at: Optional[str] = None
+    duration_minutes: int = 30
+    status: str = "Scheduled"
+    meeting_link: Optional[str] = None
+    guest_name: Optional[str] = None
+    guest_email: Optional[str] = None
+
 
 # --- Summary ---
 class CRMSummaryResponse(BaseModel):

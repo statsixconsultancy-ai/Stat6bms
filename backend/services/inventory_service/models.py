@@ -68,3 +68,15 @@ class DepreciationSchedule(TenantModel):
     ending_book_value = Column(Float, nullable=False)
 
     asset = relationship("AssetItem", back_populates="schedules")
+
+class ItemBatch(TenantModel):
+    __tablename__ = "inv_item_batches"
+
+    batch_number = Column(String(100), nullable=False, unique=True, index=True)
+    product_id = Column(String(36), ForeignKey("inv_products.id"), nullable=False, index=True)
+    mfg_date = Column(String(50), nullable=False)
+    expiry_date = Column(String(50), nullable=False)
+    quantity = Column(Integer, default=0)
+    status = Column(String(50), default="Released", index=True)  # Released, Quarantined, Expired
+    barcode_data = Column(String(255), nullable=True)
+

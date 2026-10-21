@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Float, Integer, Text, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, String, Float, Integer, Text, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from common.models import Base, TenantModel
 
@@ -15,6 +15,7 @@ class Company(TenantModel):
     annual_revenue = Column(Float, default=0.0)
     tier = Column(String(50), default="Tier 2")  # Tier 1, Tier 2, Tier 3
     account_owner = Column(String(255), default="Sales Lead")
+    parent_company_id = Column(String(36), nullable=True, index=True) # Parent-child hierarchy
 
     contacts = relationship("Contact", back_populates="company", cascade="all, delete-orphan")
     deals = relationship("Deal", back_populates="company")
@@ -29,6 +30,7 @@ class Contact(TenantModel):
     phone = Column(String(50), nullable=True)
     job_title = Column(String(100), default="Executive")
     is_primary = Column(Boolean, default=False)
+    role_type = Column(String(50), default="Decision Maker") # Decision Maker, Champion, Billing Contact, Technical Evaluator
 
     company = relationship("Company", back_populates="contacts")
     deals = relationship("Deal", back_populates="contact")
@@ -46,6 +48,12 @@ class Lead(TenantModel):
     score = Column(Integer, default=50)
     assigned_to = Column(String(255), default="Sales Rep")
     notes = Column(Text, nullable=True)
+    
+    # 1-Click Atomic Lead Qualification References
+    converted_contact_id = Column(String(36), nullable=True)
+    converted_company_id = Column(String(36), nullable=True)
+    converted_deal_id = Column(String(36), nullable=True)
+    disqualified_reason = Column(String(255), nullable=True)
 
 class Deal(TenantModel):
     __tablename__ = "crm_deals"
@@ -58,6 +66,17 @@ class Deal(TenantModel):
     probability = Column(Integer, default=20)  # 0 to 100
     close_date = Column(String(50), nullable=True)
     owner = Column(String(255), default="Account Executive")
+    
+    # Stage-Gate Blueprinting & Cross-Service Integrations
+    pipeline_name = Column(String(100), default="Standard Enterprise")
+    competitor = Column(String(100), nullable=True)
+    win_loss_reason = Column(String(255), nullable=True)
+    stage_gate_checklist = Column(JSON, default=dict) # e.g. {"budget_confirmed": True, "security_cleared": True}
+    currency = Column(String(10), default="USD")
+    
+    # Downstream conversion triggers
+    converted_invoice_id = Column(String(36), nullable=True)
+    converted_project_id = Column(String(36), nullable=True)
 
     company = relationship("Company", back_populates="deals")
     contact = relationship("Contact", back_populates="deals")
@@ -74,8 +93,14 @@ class Quote(TenantModel):
     tax_rate = Column(Float, default=0.08)  # 8% standard
     tax_amount = Column(Float, default=0.0)
     discount_amount = Column(Float, default=0.0)
+    tiered_discount_percent = Column(Float, default=0.0)
+    margin_floor_approved = Column(Boolean, default=True) # Flagged if discount exceeds 15% threshold
     total_amount = Column(Float, default=0.0)
     valid_until = Column(String(50), nullable=True)
+    
+    # Native Cryptographic E-Signature (Replaces Zoho Sign / DocuSign)
+    e_signature_status = Column(String(50), default="draft") # draft, pending_signature, signed, rejected
+    e_signature_audit = Column(JSON, default=dict) # {"signer_name": "...", "signed_at": "...", "ip_address": "...", "hash": "..."}
 
     deal = relationship("Deal", back_populates="quotes")
     items = relationship("QuoteItem", back_populates="quote", cascade="all, delete-orphan")
@@ -90,3 +115,26 @@ class QuoteItem(TenantModel):
     total_price = Column(Float, default=0.0)
 
     quote = relationship("Quote", back_populates="items")
+
+class PipelineDefinition(TenantModel):
+    __tablename__ = "crm_pipelines"
+
+    name = Column(String(100), nullable=False, index=True)
+    description = Column(String(255), nullable=True)
+    is_default = Column(Boolean, default=False)
+    stages = Column(JSON, default=list) # List of stages with rotting days, probability, mandatory fields
+
+class AppointmentBooking(TenantModel):
+    """
+    Native Appointment Scheduling Engine (Replaces Zoho Bookings / Calendly)
+    """
+    __tablename__ = "crm_appointments"
+
+    contact_id = Column(String(36), nullable=True, index=True)
+    deal_id = Column(String(36), nullable=True, index=True)
+    host_user_id = Column(String(255), nullable=False)
+    title = Column(String(255), nullable=False)
+    scheduled_at = Column(DateTime, nullable=False)
+    duration_minutes = Column(Integer, default=30)
+    status = Column(String(50), default="confirmed") # confirmed, rescheduled, cancelled
+    meeting_link = Column(String(500), nullable=True)

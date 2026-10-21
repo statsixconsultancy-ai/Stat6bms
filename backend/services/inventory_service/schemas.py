@@ -99,10 +99,55 @@ class AssetItemResponse(BaseModel):
     current_book_value: float
     schedules: List[DepreciationScheduleResponse] = []
 
-# --- Summary ---
 class InventoryValuationResponse(BaseModel):
     total_skus: int
     total_units_in_stock: int
     total_asset_cost_value: float
     total_retail_value: float
     low_stock_items_count: int
+
+# --- Warehouse Stock Transfer ---
+class WarehouseTransferRequest(BaseModel):
+    product_sku: str
+    from_warehouse_code: str
+    to_warehouse_code: str
+    quantity: int
+    notes: Optional[str] = None
+
+class WarehouseTransferResponse(BaseModel):
+    transfer_id: str
+    product_sku: str
+    from_warehouse: str
+    to_warehouse: str
+    quantity_transferred: int
+    status: str = "COMPLETED"
+    notes: Optional[str] = None
+
+# --- Serial & Batch Tracking Schemas ---
+class ItemBatchCreate(BaseModel):
+    product_sku: str
+    batch_number: str
+    mfg_date: str
+    expiry_date: str
+    quantity: int
+    barcode_data: Optional[str] = None
+
+class ItemBatchResponse(BaseModel):
+    id: str
+    org_id: str
+    product_id: str
+    batch_number: str
+    mfg_date: str
+    expiry_date: str
+    quantity: int
+    status: str
+    barcode_data: Optional[str] = None
+
+# --- FIFO & Weighted Valuation ---
+class ValuationFIFOWeightedResponse(BaseModel):
+    total_skus: int
+    total_quantity: int
+    fifo_total_valuation: float
+    weighted_average_valuation: float
+    valuation_method_applied: str = "HYBRID_FIFO_WEIGHTED"
+

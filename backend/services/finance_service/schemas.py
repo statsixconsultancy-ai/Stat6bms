@@ -15,6 +15,7 @@ class InvoiceItemResponse(BaseModel):
     total_price: float
 
 class InvoiceCreate(BaseModel):
+    invoice_number: Optional[str] = None
     client_name: str
     deal_id: Optional[str] = None
     issue_date: Optional[str] = "2026-09-24"
@@ -108,3 +109,59 @@ class CashFlowResponse(BaseModel):
     cash_outflows_payroll: float
     net_operating_cash_flow: float
     cash_at_close: float
+
+# --- Subscriptions & Recurring Billing ---
+class SubscriptionCreate(BaseModel):
+    customer_name: str
+    customer_email: str
+    plan_name: Optional[str] = "Enterprise Tier"
+    billing_interval: Optional[str] = "monthly"
+    unit_price: float
+    quantity: Optional[int] = 1
+    next_billing_date: Optional[str] = None
+    payment_method: Optional[str] = "Credit Card"
+
+class SubscriptionResponse(BaseModel):
+    id: str
+    org_id: str
+    customer_name: str
+    customer_email: str
+    plan_name: str
+    billing_interval: str
+    unit_price: float
+    quantity: int
+    total_recurring_amount: float
+    next_billing_date: str
+    status: str
+    payment_method: str
+    auto_renew: bool
+
+# --- Tax Calculation Engine (GST / VAT) ---
+class TaxCalculationRequest(BaseModel):
+    subtotal: float
+    place_of_supply: str  # e.g., "Inter-State", "Intra-State", "California", "Karnataka"
+    tax_rate: Optional[float] = 0.18
+
+class TaxCalculationResponse(BaseModel):
+    subtotal: float
+    tax_rate: float
+    cgst_amount: float
+    sgst_amount: float
+    igst_amount: float
+    total_tax: float
+    gross_amount: float
+
+# --- Expense OCR Scanner ---
+class ExpenseOCRRequest(BaseModel):
+    receipt_text: Optional[str] = None
+    image_url: Optional[str] = None
+
+class ExpenseOCRResponse(BaseModel):
+    vendor: str
+    amount: float
+    date: str
+    category: str
+    tax_amount: float
+    confidence_score: float
+    status: str = "EXTRACTED"
+

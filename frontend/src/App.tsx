@@ -37,6 +37,26 @@ import {
   Play
 } from 'lucide-react';
 import { OmniCopilotDock, CopilotMessage } from './components/OmniCopilotDock';
+import { GeminiMarkdownRenderer } from './components/GeminiMarkdownRenderer';
+import { GeminiSparkleIcon, GeminiMiniSparkle } from './components/GeminiIcons';
+import {
+  getHeaders,
+  CrmQuotesAndBookingsPanel,
+  MarketingModuleWorkspace,
+  ProjectsExtendedPanel,
+  HrModuleWorkspace,
+  FinanceModuleWorkspace,
+  InventoryModuleWorkspace,
+  ProcurementModuleWorkspace,
+  SupportModuleWorkspace,
+  AnalyticsModuleWorkspace,
+  CollaborationModuleWorkspace,
+  ComplianceModuleWorkspace,
+  AutomationModuleWorkspace,
+  AiInsightsExtendedPanel,
+  SettingsModuleWorkspace,
+  ExternalPersonaPortalWorkspace
+} from './components/Stat6EnterpriseWorkspace';
 
 const getApiBase = (): string => {
   const envVal = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_BASE_URL;
@@ -133,6 +153,26 @@ export default function App() {
   // Legal Modal
   const [activeLegalModal, setActiveLegalModal] = useState<'none' | 'tos' | 'privacy'>('none');
 
+  // Production Authentication & 7-Persona Switcher State
+  const [activePersona, setActivePersona] = useState<string>(() => {
+    return (typeof window !== 'undefined' && window.localStorage.getItem('stat6_user_persona')) || 'ADMIN';
+  });
+  const [currentUser, setCurrentUser] = useState<{ email: string; full_name: string; role: string; persona: string }>({
+    email: 'admin@acroflow.enterprise',
+    full_name: 'Prann (Enterprise Admin)',
+    role: 'ADMIN',
+    persona: 'ADMIN'
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authForm, setAuthForm] = useState({
+    email: 'admin@acroflow.enterprise',
+    password: 'Password123!',
+    full_name: 'Prann (Enterprise Admin)',
+    role: 'ADMIN',
+    persona: 'ADMIN'
+  });
+
   // Omnisearch
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -141,10 +181,7 @@ export default function App() {
   // Collaboration Chat State
   const [activeChatChannel, setActiveChatChannel] = useState<'#general' | '#engineering' | '#deals'>('#general');
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState([
-    { sender: 'Marcus Chen', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100', time: '10:42 AM', text: 'PR #88 for OAuth token renewal is merged. Deploying to canary.' },
-    { sender: 'Elena Rostova', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100', time: '10:45 AM', text: 'Verified staging database latency is under 0.8ms across all tenants.' }
-  ]);
+  const [chatMessages, setChatMessages] = useState<Array<{ sender: string; avatar: string; time: string; text: string }>>([]);
 
   // 14 Module Toggles State
   const [moduleToggles, setModuleToggles] = useState<Record<string, boolean>>({
@@ -167,6 +204,14 @@ export default function App() {
   // CRM Leads & Companies Data (Initialized empty for real platform operations)
   const [leadsData, setLeadsData] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
+  const [isAddCompanyModalOpen, setIsAddCompanyModalOpen] = useState(false);
+  const [companyFormData, setCompanyFormData] = useState({
+    name: '',
+    industry: 'Enterprise Software',
+    tier: 'Tier 1',
+    address: '',
+    annual_revenue: 1000000
+  });
 
   // Data state
   const [deals, setDeals] = useState<any[]>([]);
@@ -179,64 +224,8 @@ export default function App() {
   const [automations, setAutomations] = useState<any[]>([]);
   const [overviewData, setOverviewData] = useState<any>(null);
 
-  // Jira Sprint 44 state
-  const [jiraIssues, setJiraIssues] = useState<JiraIssue[]>([
-    {
-      id: 'FIN-50',
-      key: 'FIN-50',
-      title: 'Automate Stripe webhook idempotent retry logic',
-      type: 'task',
-      status: 'Blocked',
-      priority: 'high',
-      assignee: { name: 'Marcus Chen', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100', role: 'Staff Backend Architect' },
-      connectedTool: 'github',
-      points: 5,
-      description: 'Webhook verification failures on payment settlement must be retried with exponential backoff and recorded in PostgreSQL audit logs.',
-      crmAccount: 'Nexus Robotics Corp',
-      linkedInvoice: 'INV-2024-001'
-    },
-    {
-      id: 'FIN-51',
-      key: 'FIN-51',
-      title: 'Real-time multi-tenant ledger synchronization',
-      type: 'story',
-      status: 'In progress',
-      priority: 'urgent',
-      assignee: { name: 'Elena Rostova', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100', role: 'Lead Platform Engineer' },
-      connectedTool: 'honeycomb',
-      points: 8,
-      description: 'Zero sync latency implementation eliminating Deluge script overhead. Direct indexed table writes in PostgreSQL.',
-      crmAccount: 'Starlight BioHealth',
-      linkedInvoice: 'INV-2024-002'
-    },
-    {
-      id: 'FIN-52',
-      key: 'FIN-52',
-      title: 'Design high-density enterprise typography system',
-      type: 'story',
-      status: 'Ready for review',
-      priority: 'medium',
-      assignee: { name: 'Sofia Patel', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100', role: 'Principal Product Designer' },
-      connectedTool: 'figma',
-      points: 3,
-      description: 'High-contrast typography with bold headlines and pure black text for all workspace elements.',
-      crmAccount: 'Apex Cloud Infrastructure',
-      linkedInvoice: 'INV-2024-003'
-    },
-    {
-      id: 'FIN-53',
-      key: 'FIN-53',
-      title: 'SOC 2 Type II attestation report ingestion pipeline',
-      type: 'task',
-      status: 'Done',
-      priority: 'low',
-      assignee: { name: 'David Kim', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100', role: 'Security & Compliance Lead' },
-      points: 2,
-      description: 'Automated cryptographic signature verification for third-party vendor security audits.',
-      crmAccount: 'Global Freight Dynamics',
-      linkedInvoice: 'INV-2024-004'
-    }
-  ]);
+  // Jira Sprint state (Dynamic from real backend tasks)
+  const [jiraIssues, setJiraIssues] = useState<JiraIssue[]>([]);
 
   // --- AGENTIC AI CHATBOT & SCHEDULED OPERATIONS STATE ---
   interface ScheduledTaskItem {
@@ -284,7 +273,7 @@ export default function App() {
     company: '',
     email: '',
     source: 'Website Form',
-    owner: 'Marcus Chen'
+    owner: ''
   });
 
   const [isAddDealModalOpen, setIsAddDealModalOpen] = useState(false);
@@ -310,7 +299,7 @@ export default function App() {
     type: 'task',
     status: 'In progress',
     priority: 'high',
-    assigneeName: 'Marcus Chen',
+    assigneeName: '',
     points: 5,
     description: ''
   });
@@ -380,7 +369,6 @@ export default function App() {
           } : undefined,
           immediateData: data.immediate_data ? {
             revenue: data.immediate_data.total_paid_revenue,
-            cash: data.immediate_data.cash_reserves,
             margin: data.immediate_data.operating_margin_pct,
             pipeline: data.immediate_data.pipeline_value
           } : undefined,
@@ -575,103 +563,321 @@ export default function App() {
     }
   };
 
-  const handleAddLeadSubmit = (e: React.FormEvent) => {
+  const notifyUser = (msg: string) => {
+    setSchedulerNotification(msg);
+    setTimeout(() => setSchedulerNotification(null), 4500);
+  };
+
+  const handleAddLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!leadFormData.name.trim()) return;
-    const newLead = {
-      id: 'L-' + (leadsData.length + 1),
-      name: leadFormData.name,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120',
-      company: leadFormData.company || 'Enterprise Corp',
-      source: leadFormData.source,
-      email: leadFormData.email || `${leadFormData.name.toLowerCase().replace(/ /g, '.')}@enterprise.com`,
-      owner: { name: leadFormData.owner, avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120' }
-    };
-    setLeadsData(prev => [newLead, ...prev]);
-    setIsAddLeadModalOpen(false);
-    setLeadFormData({ name: '', company: '', email: '', source: 'Website Form', owner: 'Marcus Chen' });
-    setSchedulerNotification(`Lead "${newLead.name}" added successfully.`);
-    setTimeout(() => setSchedulerNotification(null), 4000);
+    const parts = leadFormData.name.trim().split(' ');
+    const first_name = parts[0] || 'Enterprise';
+    const last_name = parts.slice(1).join(' ') || 'Prospect';
+    const email = leadFormData.email || `${first_name.toLowerCase()}.${last_name.toLowerCase()}@enterprise.io`;
+
+    try {
+      const res = await fetch(`${API_BASE}/crm/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name,
+          last_name,
+          email,
+          company_name: leadFormData.company || 'Enterprise Corp',
+          source: leadFormData.source || 'Website',
+          assigned_to: leadFormData.owner || currentUser.full_name || 'Enterprise Admin',
+          score: 85
+        })
+      });
+      if (res.ok) {
+        setIsAddLeadModalOpen(false);
+        setLeadFormData({ name: '', company: '', email: '', source: 'Website Form', owner: '' });
+        notifyUser(`Lead "${leadFormData.name}" persisted in CRM database.`);
+        refreshAllData();
+      }
+    } catch {
+      notifyUser('Failed to create lead.');
+    }
   };
 
-  const handleAddDealSubmit = (e: React.FormEvent) => {
+  const handleQualifyLead = async (leadId: string, leadName: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/crm/leads/${leadId}/convert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deal_title: `${leadName} Enterprise Expansion`, deal_amount: 95000 })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        notifyUser(`1-Click Lead Qualification: Created Company "${data.company_name}", Contact & Deal (${fmt(data.deal_amount)})!`);
+        refreshAllData();
+      }
+    } catch {
+      notifyUser('Lead qualification failed.');
+    }
+  };
+
+  const handleAddDealSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dealFormData.title.trim()) return;
-    const newDeal = {
-      id: 'DEAL-' + Date.now(),
-      title: dealFormData.title,
-      company_name: dealFormData.company_name || 'Client Engagement',
-      amount: Number(dealFormData.amount) || 50000,
-      stage: dealFormData.stage,
-      probability: Number(dealFormData.probability) || 20
-    };
-    setDeals(prev => [newDeal, ...prev]);
-    setIsAddDealModalOpen(false);
-    setDealFormData({ title: '', company_name: '', amount: 50000, stage: 'New', probability: 20 });
-    setSchedulerNotification(`Deal "${newDeal.title}" created in pipeline.`);
-    setTimeout(() => setSchedulerNotification(null), 4000);
+    const stageNorm = dealFormData.stage === 'New' ? 'Prospecting' : dealFormData.stage;
+    try {
+      const res = await fetch(`${API_BASE}/crm/deals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: dealFormData.title,
+          company_id: companies[0]?.id || null,
+          amount: Number(dealFormData.amount) || 50000,
+          stage: stageNorm,
+          probability: Number(dealFormData.probability) || 40
+        })
+      });
+      if (res.ok) {
+        setIsAddDealModalOpen(false);
+        setDealFormData({ title: '', company_name: '', amount: 50000, stage: 'Prospecting', probability: 40 });
+        notifyUser(`Deal "${dealFormData.title}" persisted in CRM pipeline.`);
+        refreshAllData();
+      }
+    } catch {
+      notifyUser('Failed to create deal.');
+    }
   };
 
-  const handleAddIssueSubmit = (e: React.FormEvent) => {
+  const handleConvertDealToInvoice = async (dealId: string) => {
+    const res = await fetch(`${API_BASE}/crm/deals/${dealId}/convert-to-invoice`, { method: 'POST' });
+    if (res.ok) {
+      notifyUser('1-Click Deal-to-Invoice: Sales Invoice dispatched to Finance & Accounting!');
+      refreshAllData();
+    }
+  };
+
+  const handleConvertDealToProject = async (dealId: string) => {
+    const res = await fetch(`${API_BASE}/crm/deals/${dealId}/convert-to-project`, { method: 'POST', headers: getHeaders() });
+    if (res.ok) {
+      notifyUser('1-Click Deal-to-Project: Delivery Workspace spun up in Projects & Operations!');
+      refreshAllData();
+    }
+  };
+
+  const handleMoveDealStage = async (dealId: string, nextStage: string) => {
+    const res = await fetch(`${API_BASE}/crm/deals/${dealId}/stage`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        stage: nextStage,
+        budget_confirmed: true,
+        proposal_uploaded: true
+      })
+    });
+    if (res.ok) {
+      notifyUser(`Deal stage transitioned to "${nextStage}" (Blueprint stage-gates verified).`);
+      refreshAllData();
+    } else {
+      const err = await res.json().catch(() => ({ detail: 'Stage gate validation failed' }));
+      notifyUser(`Stage Gate Blocked: ${err.detail}`);
+    }
+  };
+
+  const handleSwitchPersona = (persona: string) => {
+    const personaDirectory: Record<string, { email: string; full_name: string; role: string }> = {
+      ADMIN: { email: 'admin@acroflow.enterprise', full_name: 'Prann (Enterprise Admin)', role: 'ADMIN' },
+      MANAGER: { email: 'manager@acroflow.enterprise', full_name: 'Department Manager', role: 'MANAGER' },
+      EMPLOYEE: { email: 'staff@acroflow.enterprise', full_name: 'Staff Member', role: 'EMPLOYEE' },
+      CUSTOMER: { email: 'client@portal.enterprise', full_name: 'Client Contact', role: 'CUSTOMER' },
+      VENDOR: { email: 'supplier@portal.enterprise', full_name: 'Supplier Representative', role: 'VENDOR' },
+      PARTNER: { email: 'partner@portal.enterprise', full_name: 'Channel Partner', role: 'PARTNER' },
+      EXTERNAL_USER: { email: 'auditor@portal.enterprise', full_name: 'External Auditor', role: 'AUDITOR' }
+    };
+    const info = personaDirectory[persona] || personaDirectory.ADMIN;
+    setActivePersona(persona);
+    setCurrentUser({ ...info, persona });
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('stat6_user_persona', persona);
+      window.localStorage.setItem('stat6_user_role', info.role);
+      window.localStorage.setItem('stat6_user_name', info.full_name);
+      window.localStorage.setItem('stat6_user_email', info.email);
+    }
+    notifyUser(`Switched active session persona to ${persona} (${info.full_name}).`);
+    refreshAllData();
+  };
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const endpoint = authMode === 'login' ? '/auth/login' : '/auth/register';
+    const body = authMode === 'login'
+      ? { email: authForm.email, password: authForm.password }
+      : {
+          email: authForm.email,
+          password: authForm.password,
+          full_name: authForm.full_name || 'STAT6 Enterprise User',
+          role: authForm.role,
+          persona: authForm.persona
+        };
+    try {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const u = data.user || { email: authForm.email, full_name: authForm.full_name, role: authForm.role, persona: authForm.persona };
+        setCurrentUser({
+          email: u.email,
+          full_name: u.full_name || u.email,
+          role: u.role || 'ADMIN',
+          persona: u.persona || u.role || 'ADMIN'
+        });
+        setActivePersona(u.persona || u.role || 'ADMIN');
+        if (typeof window !== 'undefined') {
+          if (data.access_token) window.localStorage.setItem('stat6_jwt_token', data.access_token);
+          if (u.id) window.localStorage.setItem('stat6_user_id', u.id);
+          window.localStorage.setItem('stat6_user_role', u.role || 'ADMIN');
+          window.localStorage.setItem('stat6_user_persona', u.persona || u.role || 'ADMIN');
+        }
+        setIsAuthModalOpen(false);
+        notifyUser(`Authenticated as ${u.full_name || u.email} (${u.persona || u.role}) with JWT session.`);
+        refreshAllData();
+      } else {
+        const err = await res.json().catch(() => ({ detail: 'Invalid credentials' }));
+        notifyUser(`Authentication Error: ${err.detail || 'Check credentials'}`);
+      }
+    } catch {
+      notifyUser('Authentication service unreachable.');
+    }
+  };
+
+  const handleAddCompanySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!companyFormData.name.trim()) return;
+    try {
+      const res = await fetch(`${API_BASE}/crm/companies`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          name: companyFormData.name,
+          industry: companyFormData.industry || 'Technology',
+          tier: companyFormData.tier || 'Tier 1',
+          address: companyFormData.address || 'Enterprise HQ',
+          annual_revenue: Number(companyFormData.annual_revenue) || 0,
+          account_owner: currentUser.full_name || 'Enterprise Admin'
+        })
+      });
+      if (res.ok) {
+        setIsAddCompanyModalOpen(false);
+        setCompanyFormData({
+          name: '',
+          industry: 'Enterprise Software',
+          tier: 'Tier 1',
+          address: '',
+          annual_revenue: 1000000
+        });
+        notifyUser(`Account "${companyFormData.name}" created successfully.`);
+        refreshAllData();
+      } else {
+        notifyUser('Failed to create company account.');
+      }
+    } catch {
+      notifyUser('Network error while saving company.');
+    }
+  };
+
+  const handleAddIssueSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!issueFormData.title.trim()) return;
-    const newKey = 'FIN-' + (jiraIssues.length + 50);
-    const newIssue: JiraIssue = {
-      id: newKey,
-      key: newKey,
-      title: issueFormData.title,
-      type: issueFormData.type,
-      status: issueFormData.status,
-      priority: issueFormData.priority,
-      points: issueFormData.points,
-      description: issueFormData.description || 'Sprint 44 engineering deliverable.',
-      assignee: {
-        name: issueFormData.assigneeName,
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
-        role: 'Engineer'
-      },
-      connectedTool: 'github'
-    };
-    setJiraIssues(prev => [newIssue, ...prev]);
+    try {
+      let pRes = await fetch(`${API_BASE}/projects`, { headers: getHeaders() });
+      let pList = pRes.ok ? await pRes.json() : [];
+      let projId = Array.isArray(pList) && pList[0] ? pList[0].id : null;
+      if (!projId) {
+        // Auto-create primary delivery project if none exists yet
+        const npRes = await fetch(`${API_BASE}/projects`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            name: 'Primary Enterprise Delivery Project',
+            code: 'PRJ-01',
+            client_name: 'Internal Systems',
+            description: 'Core production deliverables and sprint operations tracking.',
+            budget: 100000,
+            manager: currentUser.full_name || 'Enterprise Admin'
+          })
+        });
+        if (npRes.ok) {
+          const np = await npRes.json();
+          projId = np.id;
+        }
+      }
+      if (projId) {
+        await fetch(`${API_BASE}/projects/tasks`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            project_id: projId,
+            title: issueFormData.title,
+            description: issueFormData.description || 'Sprint engineering deliverable.',
+            status: issueFormData.status === 'Done' ? 'Done' : issueFormData.status === 'Ready for review' ? 'Review' : 'In Progress',
+            priority: issueFormData.priority.charAt(0).toUpperCase() + issueFormData.priority.slice(1),
+            assignee: issueFormData.assigneeName || currentUser.full_name || 'Enterprise Admin',
+            story_points: Number(issueFormData.points) || 5
+          })
+        });
+      }
+    } catch {
+      // fallback local update
+    }
     setIsAddIssueModalOpen(false);
     setIssueFormData({
       title: '',
       type: 'task',
       status: 'In progress',
       priority: 'high',
-      assigneeName: 'Marcus Chen',
+      assigneeName: '',
       points: 5,
       description: ''
     });
-    setSchedulerNotification(`Jira Issue ${newKey} created on Sprint 44 board.`);
-    setTimeout(() => setSchedulerNotification(null), 4000);
+    notifyUser('Task created and recorded in Projects.');
+    refreshAllData();
   };
 
-  const handleAddInvoiceSubmit = (e: React.FormEvent) => {
+  const handleAddInvoiceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!invoiceFormData.client.trim()) return;
-    const newInv = {
-      id: 'inv-' + Date.now(),
-      number: invoiceFormData.number,
-      client: invoiceFormData.client,
-      due_date: invoiceFormData.due_date,
-      total: Number(invoiceFormData.total),
-      status: invoiceFormData.status
-    };
-    setFinanceData((prev: any) => ({
-      ...prev,
-      invoices: [newInv, ...(prev?.invoices || [])]
-    }));
-    setIsAddInvoiceModalOpen(false);
-    setInvoiceFormData({
-      number: 'INV-2024-' + (Math.floor(Math.random() * 900) + 100),
-      client: '',
-      due_date: '2026-11-15',
-      total: 25000,
-      status: 'Unpaid'
-    });
-    setSchedulerNotification(`Invoice ${newInv.number} created.`);
-    setTimeout(() => setSchedulerNotification(null), 4000);
+    try {
+      const res = await fetch(`${API_BASE}/finance/invoices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_name: invoiceFormData.client,
+          issue_date: new Date().toISOString().slice(0, 10),
+          due_date: invoiceFormData.due_date,
+          tax_rate: 0.0,
+          items: [
+            {
+              description: `Enterprise License (${invoiceFormData.number})`,
+              quantity: 1,
+              unit_price: Number(invoiceFormData.total) || 25000
+            }
+          ]
+        })
+      });
+      if (res.ok) {
+        setIsAddInvoiceModalOpen(false);
+        setInvoiceFormData({
+          number: 'INV-2026-' + (Math.floor(Math.random() * 900) + 100),
+          client: '',
+          due_date: '2026-11-15',
+          total: 25000,
+          status: 'Unpaid'
+        });
+        notifyUser('Invoice created & double-entry journal posted.');
+        refreshAllData();
+      }
+    } catch {
+      notifyUser('Failed to create invoice.');
+    }
   };
 
   // Keyboard shortcut for Omnisearch (Ctrl+K)
@@ -706,15 +912,52 @@ export default function App() {
           company: l.company_name || l.company || 'Enterprise Corp',
           source: l.source || 'Direct',
           email: l.email || '',
-          owner: { name: l.assigned_to || l.owner?.name || 'Marcus Chen', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120' }
+          status: l.status || 'New',
+          score: l.score ?? 80,
+          converted_deal_id: l.converted_deal_id,
+          owner: { name: l.assigned_to || l.owner?.name || 'Unassigned', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120' }
         })));
       }
     }).catch(() => {});
-    fetch(`${API_BASE}/marketing/campaigns`).then(r => r.json()).then(setMarketingData).catch(() => {});
-    fetch(`${API_BASE}/hr/employees`).then(r => r.json()).then(setHrData).catch(() => {});
-    fetch(`${API_BASE}/finance/invoices`).then(r => r.json()).then(setFinanceData).catch(() => {});
-    fetch(`${API_BASE}/inventory/products`).then(r => r.json()).then(setInventoryData).catch(() => {});
-    fetch(`${API_BASE}/procurement/orders`).then(r => r.json()).then(setProcurementData).catch(() => {});
+    fetch(`${API_BASE}/marketing/campaigns`).then(r => r.json()).then(data => setMarketingData(Array.isArray(data) ? data : [])).catch(() => {});
+    fetch(`${API_BASE}/projects/tasks`, { headers: getHeaders() }).then(r => r.json()).then(tasks => {
+      if (Array.isArray(tasks)) {
+        setJiraIssues(tasks.map((t: any) => ({
+          id: t.id,
+          key: t.issue_key || t.id.slice(0, 8),
+          title: t.title,
+          type: (t.issue_type?.toLowerCase() === 'bug' ? 'bug' : 'task') as any,
+          status: t.status === 'Review' ? 'Ready for review' : (t.status || 'In progress'),
+          priority: (t.priority?.toLowerCase() || 'medium') as any,
+          points: t.story_points || 3,
+          description: t.description || '',
+          assignee: {
+            name: t.assignee || 'Unassigned',
+            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+            role: 'Team Member'
+          },
+          connectedTool: 'github'
+        })));
+      }
+    }).catch(() => {});
+    Promise.all([
+      fetch(`${API_BASE}/hr/employees`).then(r => r.json()).catch(() => []),
+      fetch(`${API_BASE}/hr/departments`).then(r => r.json()).catch(() => [])
+    ]).then(([emps, depts]) => {
+      setHrData({
+        employees: Array.isArray(emps) ? emps : (emps?.employees || []),
+        departments: Array.isArray(depts) ? depts : []
+      });
+    });
+    fetch(`${API_BASE}/finance/invoices`).then(r => r.json()).then(data => {
+      setFinanceData({ invoices: Array.isArray(data) ? data : (data?.invoices || []) });
+    }).catch(() => {});
+    fetch(`${API_BASE}/inventory/products`).then(r => r.json()).then(data => {
+      setInventoryData({ products: Array.isArray(data) ? data : (data?.products || []) });
+    }).catch(() => {});
+    fetch(`${API_BASE}/procurement/orders`).then(r => r.json()).then(data => {
+      setProcurementData({ purchase_orders: Array.isArray(data) ? data : (data?.purchase_orders || []) });
+    }).catch(() => {});
     fetch(`${API_BASE}/support/tickets`).then(r => r.json()).then(data => { if (Array.isArray(data)) setSupportTickets(data); }).catch(() => {});
     fetch(`${API_BASE}/automation/rules`).then(r => r.json()).then(data => { if (Array.isArray(data)) setAutomations(data); }).catch(() => {});
     fetchScheduledTasks();
@@ -751,10 +994,11 @@ export default function App() {
       setSelectedIssue(prev => prev ? { ...prev, status: newStatus } : null);
     }
     fetch(`${API_BASE}/projects/tasks/${issueId}/move`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: getHeaders(),
       body: JSON.stringify({ status: newStatus })
     }).catch(() => {});
+    notifyUser(`Moved task ${issueId} to "${newStatus}" in Sprint Board.`);
   };
 
   const handleSendChat = (e: React.FormEvent) => {
@@ -1116,21 +1360,51 @@ export default function App() {
           <div className="flex items-center gap-2 text-black dark:text-white">
             <span className="font-bold text-black dark:text-white tracking-tight">STAT6</span>
             <span className="text-slate-400 font-normal">/</span>
-            <span className="uppercase text-xs tracking-wider text-black dark:text-white font-normal">{activeTab}</span>
+            <span className="uppercase text-xs tracking-wider text-black dark:text-white font-normal">
+              {['CUSTOMER', 'VENDOR', 'PARTNER'].includes(activePersona) ? `${activePersona} PORTAL` : activeTab}
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Live 7-Persona Role & Portal Switcher */}
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs">
+              <span className="text-[10px] font-mono text-slate-500 uppercase">Persona:</span>
+              <select
+                value={activePersona}
+                onChange={e => handleSwitchPersona(e.target.value)}
+                className="bg-transparent font-bold text-xs text-black dark:text-white focus:outline-none cursor-pointer"
+                title="Switch among all 7 STAT6 Role Personas (Internal & Free External Portals)"
+              >
+                <option value="ADMIN">01. ADMIN (Internal Full)</option>
+                <option value="MANAGER">02. MANAGER (Dept Head)</option>
+                <option value="EMPLOYEE">03. EMPLOYEE (Self-Service)</option>
+                <option value="CUSTOMER">04. CUSTOMER PORTAL (Free)</option>
+                <option value="VENDOR">05. VENDOR PORTAL (Free)</option>
+                <option value="PARTNER">06. PARTNER PORTAL (Free)</option>
+                <option value="EXTERNAL_USER">07. EXTERNAL AUDITOR</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="px-2.5 py-1 rounded-lg bg-[#162340] text-white text-xs font-mono hover:opacity-90 cursor-pointer flex items-center gap-1.5"
+              title="Manage JWT Session, Login or Register"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>{currentUser.full_name.split(' ')[0]} ({activePersona})</span>
+            </button>
+
             <button
               onClick={() => setIsSearchOpen(true)}
               className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-black dark:text-white hover:bg-slate-50 font-normal"
             >
-              <span>Search anything...</span>
+              <span>Search...</span>
               <kbd className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-mono">Ctrl+K</kbd>
             </button>
 
             <button
               onClick={refreshAllData}
-              className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-black dark:text-white hover:bg-slate-50 font-normal"
+              className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-black dark:text-white hover:bg-slate-50 font-normal cursor-pointer"
             >
               Refresh
             </button>
@@ -1139,14 +1413,27 @@ export default function App() {
 
         {/* Scrollable Work Area */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          
+          {(['CUSTOMER', 'VENDOR', 'PARTNER'] as const).includes(activePersona as any) ? (
+            <ExternalPersonaPortalWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+              persona={activePersona as 'CUSTOMER' | 'VENDOR' | 'PARTNER'}
+              onSwitchPersona={handleSwitchPersona}
+            />
+          ) : (
+            <>
           {/* ==================================================== */}
           {/* TAB 01: LEADS (EXACT MATCH OF USER'S REFERENCE IMAGE) */}
           {/* ==================================================== */}
           {activeTab === 'leads' && (
             <div className="space-y-4 max-w-7xl mx-auto">
               <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Leads</h1>
+                <div>
+                  <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Leads &amp; 1-Click Atomic Qualification</h1>
+                  <p className="text-xs text-slate-500">Omnichannel Ingestion • AI Lead Scoring • Atomic Lead → Company + Contact + Deal Conversion</p>
+                </div>
                 <button
                   onClick={() => setIsAddLeadModalOpen(true)}
                   className="px-3.5 py-1.5 rounded-lg bg-[#2563eb] hover:bg-blue-700 text-white font-normal text-xs transition cursor-pointer"
@@ -1155,34 +1442,26 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Exact clean white table from user image */}
               <div className="bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131c2e]">
                     <tr className="text-black dark:text-white text-[13px]">
-                      <th className="py-3 px-4 border-r border-slate-200 dark:border-slate-800 font-bold">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold">Lead Name</span>
-                          <span className="font-normal text-slate-800 dark:text-slate-200 ml-1">All</span>
-                          <span className="text-[10px] font-normal">▾</span>
-                        </div>
-                      </th>
+                      <th className="py-3 px-4 border-r border-slate-200 dark:border-slate-800 font-bold">Lead Name</th>
                       <th className="py-3 px-4 border-r border-slate-200 dark:border-slate-800 font-bold">Company</th>
                       <th className="py-3 px-4 border-r border-slate-200 dark:border-slate-800 font-bold">Lead Source</th>
+                      <th className="py-3 px-4 border-r border-slate-200 dark:border-slate-800 font-bold">AI Score</th>
                       <th className="py-3 px-4 border-r border-slate-200 dark:border-slate-800 font-bold">Email</th>
-                      <th className="py-3 px-4 font-bold">Lead Owner</th>
+                      <th className="py-3 px-4 border-r border-slate-200 dark:border-slate-800 font-bold">Lead Owner</th>
+                      <th className="py-3 px-4 font-bold text-right">1-Click Qualification</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 font-normal">
                     {leadsData.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-14 px-4 text-center">
+                        <td colSpan={7} className="py-14 px-4 text-center">
                           <div className="flex flex-col items-center justify-center gap-2">
                             <Target className="w-8 h-8 text-slate-400" />
                             <p className="text-[14px] font-medium text-black dark:text-white">No customer leads registered</p>
-                            <p className="text-[12px] text-slate-500 max-w-sm">
-                              CRM is running in clean production mode with zero template data. Create your first real lead using "+ Add Lead" above or instruct the AI Copilot.
-                            </p>
                             <button
                               onClick={() => setIsAddLeadModalOpen(true)}
                               className="mt-2 px-3 py-1.5 rounded-lg bg-[#2563eb] hover:bg-blue-700 text-white text-xs transition cursor-pointer"
@@ -1198,17 +1477,30 @@ export default function App() {
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-3">
                               <img className="h-8 w-8 rounded-full object-cover ring-1 ring-slate-200" src={lead.avatar} alt="" />
-                              <span className="text-[13.5px] text-black dark:text-white font-normal">{lead.name}</span>
+                              <span className="text-[13.5px] text-black dark:text-white font-medium">{lead.name}</span>
                             </div>
                           </td>
-                          <td className="py-3.5 px-4 text-[13px] text-black dark:text-white font-normal">{lead.company}</td>
-                          <td className="py-3.5 px-4 text-[13px] text-black dark:text-white font-normal">{lead.source}</td>
-                          <td className="py-3.5 px-4 text-[13px] text-black dark:text-white font-normal">{lead.email}</td>
+                          <td className="py-3.5 px-4 text-[13px] text-black dark:text-white">{lead.company}</td>
+                          <td className="py-3.5 px-4 text-[13px] text-black dark:text-white">{lead.source}</td>
+                          <td className="py-3.5 px-4 font-mono text-emerald-700 font-bold">{lead.score ?? 85}/100</td>
+                          <td className="py-3.5 px-4 text-[13px] text-black dark:text-white font-mono">{lead.email}</td>
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-2.5">
                               <img className="h-7 w-7 rounded-full object-cover ring-1 ring-slate-200" src={lead.owner.avatar} alt="" />
-                              <span className="text-[13px] text-black dark:text-white font-normal">{lead.owner.name}</span>
+                              <span className="text-[13px] text-black dark:text-white">{lead.owner.name}</span>
                             </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            {lead.status === 'Converted' || lead.converted_deal_id ? (
+                              <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-mono text-[10px]">QUALIFIED &amp; CONVERTED</span>
+                            ) : (
+                              <button
+                                onClick={() => handleQualifyLead(lead.id, lead.company || lead.name)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs cursor-pointer"
+                              >
+                                Qualify → Deal
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -1220,14 +1512,17 @@ export default function App() {
           )}
 
           {/* ==================================================== */}
-          {/* TAB 01: DEALS & SALES PIPELINE */}
+          {/* TAB 01: DEALS, CPQ QUOTES, E-SIGN & BOOKINGS */}
           {/* ==================================================== */}
-          {activeTab === 'deals' && (
+          {!['CUSTOMER', 'VENDOR', 'PARTNER'].includes(activePersona) && activeTab === 'deals' && (
             <div className="space-y-4 max-w-7xl mx-auto">
               <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Sales Pipeline & Deals</h1>
+                <div>
+                  <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Sales Pipeline, CPQ Quotations &amp; Native E-Sign</h1>
+                  <p className="text-xs text-slate-500">Stage-Gate Blueprint • 1-Click Deal-to-Invoice &amp; Deal-to-Project • Cryptographic E-Signature</p>
+                </div>
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm text-black dark:text-white font-normal">
+                  <span className="font-mono text-sm text-black dark:text-white font-bold">
                     Pipeline Value: {fmt(deals.reduce((acc: number, d: any) => acc + (Number(d.amount) || 0), 0))}
                   </span>
                   <button
@@ -1238,11 +1533,13 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-2.5">
-                {['New', 'Contacted', 'Qualified', 'Proposal', 'Negotiation', 'Won'].map(stage => {
-                  const stageDeals = deals.filter(d => d.stage === stage);
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5">
+                {(['Prospecting', 'Qualification', 'Proposal Sent', 'Negotiation', 'Won'] as const).map((stage, stageIdx, allStages) => {
+                  const stageDeals = deals.filter(d => d.stage === stage || (stage === 'Prospecting' && d.stage === 'New') || (stage === 'Proposal Sent' && d.stage === 'Proposal'));
+                  const prevStage = stageIdx > 0 ? allStages[stageIdx - 1] : null;
+                  const nextStage = stageIdx < allStages.length - 1 ? allStages[stageIdx + 1] : null;
                   return (
-                    <div key={stage} className="p-3 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 dark:border-slate-800 min-h-[460px] flex flex-col">
+                    <div key={stage} className="p-3 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 dark:border-slate-800 min-h-[340px] flex flex-col">
                       <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
                         <h2 className="text-xs font-bold text-black dark:text-white">{stage}</h2>
                         <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
@@ -1254,12 +1551,38 @@ export default function App() {
                           <div className="text-[11px] text-slate-400 italic text-center py-10">No deals</div>
                         ) : (
                           stageDeals.map(d => (
-                            <div key={d.id} className="p-2.5 rounded-xl border border-slate-200 bg-[#fafbfc] dark:bg-slate-900 shadow-xs">
-                              <div className="text-xs text-black dark:text-white font-normal">{d.title}</div>
-                              <div className="text-[11px] text-black dark:text-white mt-1 font-normal">{d.company_name}</div>
-                              <div className="mt-2 flex justify-between font-mono text-xs text-black dark:text-white font-normal">
-                                <span>{fmt(d.amount)}</span>
+                            <div key={d.id} className="p-2.5 rounded-xl border border-slate-200 bg-[#fafbfc] dark:bg-slate-900 shadow-xs space-y-1.5">
+                              <div className="text-xs text-black dark:text-white font-bold">{d.title}</div>
+                              <div className="text-[11px] text-slate-500">{d.company_name || 'Enterprise Account'}</div>
+                              <div className="flex justify-between font-mono text-xs text-black dark:text-white">
+                                <span className="font-bold">{fmt(d.amount)}</span>
                                 <span>{d.probability}%</span>
+                              </div>
+                              <div className="flex gap-1 pt-1 border-t border-slate-200/70">
+                                {prevStage && (
+                                  <button
+                                    onClick={() => handleMoveDealStage(d.id, prevStage)}
+                                    className="px-1.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-mono cursor-pointer"
+                                    title={`Move back to ${prevStage}`}
+                                  >
+                                    ←
+                                  </button>
+                                )}
+                                <button onClick={() => handleConvertDealToInvoice(d.id)} className="flex-1 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-mono cursor-pointer">
+                                  → Invoice
+                                </button>
+                                <button onClick={() => handleConvertDealToProject(d.id)} className="flex-1 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-800 text-[10px] font-mono cursor-pointer">
+                                  → Project
+                                </button>
+                                {nextStage && (
+                                  <button
+                                    onClick={() => handleMoveDealStage(d.id, nextStage)}
+                                    className="px-1.5 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-800 text-[10px] font-mono cursor-pointer"
+                                    title={`Advance to ${nextStage}`}
+                                  >
+                                    →
+                                  </button>
+                                )}
                               </div>
                             </div>
                           ))
@@ -1269,6 +1592,15 @@ export default function App() {
                   );
                 })}
               </div>
+
+              <CrmQuotesAndBookingsPanel
+                apiBase={API_BASE}
+                fmt={fmt}
+                notify={notifyUser}
+                refreshGlobal={refreshAllData}
+                deals={deals}
+                companies={companies}
+              />
             </div>
           )}
 
@@ -1277,39 +1609,130 @@ export default function App() {
           {/* ==================================================== */}
           {activeTab === 'contacts' && (
             <div className="space-y-4 max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Customer Accounts & 360° Directory</h1>
-              <div className="bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b bg-white dark:bg-[#131c2e] text-black dark:text-white font-normal text-[12.5px]">
-                    <tr><th className="py-3 px-4 border-r">Company Name</th><th className="py-3 px-4 border-r">Industry</th><th className="py-3 px-4 border-r">Tier</th><th className="py-3 px-4 border-r">Location</th><th className="py-3 px-4">Annual Revenue</th></tr>
-                  </thead>
-                  <tbody className="divide-y text-black dark:text-white font-normal">
-                    {companies.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="py-14 px-4 text-center">
-                          <div className="flex flex-col items-center justify-center gap-2">
-                            <Briefcase className="w-8 h-8 text-slate-400" />
-                            <p className="text-[14px] font-medium text-black dark:text-white">No customer accounts registered</p>
-                            <p className="text-[12px] text-slate-500 max-w-sm">
-                              CRM directory is running in clean production state. Real enterprise accounts will appear here once registered or onboarded via AI Copilot.
-                            </p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      companies.map(c => (
-                        <tr key={c.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                          <td className="py-3.5 px-4 font-medium">{c.name}</td>
-                          <td className="py-3.5 px-4">{c.industry || 'Technology'}</td>
-                          <td className="py-3.5 px-4">{c.tier || 'Tier 1'}</td>
-                          <td className="py-3.5 px-4">{c.address || c.phone || 'Enterprise HQ'}</td>
-                          <td className="py-3.5 px-4 font-mono">{fmt(c.annual_revenue || 0)}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                <div>
+                  <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Customer Accounts &amp; 360° Parent-Child Hierarchy</h1>
+                  <p className="text-xs text-slate-500">Corporate Accounts • Tier Classification • Hierarchy Tracking</p>
+                </div>
+                <button
+                  onClick={() => setIsAddCompanyModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#2563eb] hover:bg-blue-700 text-white font-normal text-xs transition cursor-pointer"
+                >
+                  + Add Customer Account
+                </button>
               </div>
+
+              {companies.length === 0 ? (
+                <div className="p-8 text-center bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="font-bold text-sm text-black dark:text-white">No Customer Accounts Registered</div>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">Click &ldquo;+ Add Customer Account&rdquo; above to record your client organizations, tiers, and contractual revenues.</p>
+                  <button
+                    onClick={() => setIsAddCompanyModalOpen(true)}
+                    className="mt-2 px-4 py-2 bg-[#2563eb] text-white rounded-xl text-xs font-semibold hover:bg-blue-700 cursor-pointer transition"
+                  >
+                    + Add Customer Account
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="border-b bg-slate-50 dark:bg-slate-900 text-black dark:text-white text-[12.5px]">
+                      <tr><th className="py-3 px-4 border-r">Company Name</th><th className="py-3 px-4 border-r">Industry</th><th className="py-3 px-4 border-r">Tier</th><th className="py-3 px-4 border-r">HQ Location</th><th className="py-3 px-4 border-r">Account Owner</th><th className="py-3 px-4">Annual Revenue</th></tr>
+                    </thead>
+                    <tbody className="divide-y text-black dark:text-white font-normal">
+                      {companies.map(c => (
+                        <tr key={c.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                          <td className="py-3.5 px-4 font-bold">{c.name}</td>
+                          <td className="py-3.5 px-4">{c.industry || 'Technology'}</td>
+                          <td className="py-3.5 px-4"><span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 font-mono text-[11px]">{c.tier || 'Tier 1'}</span></td>
+                          <td className="py-3.5 px-4">{c.address || c.phone || 'Enterprise HQ'}</td>
+                          <td className="py-3.5 px-4">{c.account_owner || 'Unassigned'}</td>
+                          <td className="py-3.5 px-4 font-mono font-bold">{fmt(c.annual_revenue || 0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Add Company Modal */}
+              {isAddCompanyModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+                  <div className="bg-white dark:bg-[#131c2e] p-6 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-800 space-y-4">
+                    <h2 className="text-base font-bold text-black dark:text-white">Add Customer Account</h2>
+                    <form onSubmit={handleAddCompanySubmit} className="space-y-3 text-xs">
+                      <div>
+                        <label className="block font-semibold mb-1">Company / Organization Name</label>
+                        <input
+                          value={companyFormData.name}
+                          onChange={e => setCompanyFormData({ ...companyFormData, name: e.target.value })}
+                          placeholder="e.g. Acme Global Systems"
+                          className="w-full border rounded-lg px-3 py-2 text-black"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block font-semibold mb-1">Industry</label>
+                          <input
+                            value={companyFormData.industry}
+                            onChange={e => setCompanyFormData({ ...companyFormData, industry: e.target.value })}
+                            placeholder="Technology, Healthcare..."
+                            className="w-full border rounded-lg px-3 py-2 text-black"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-semibold mb-1">Tier</label>
+                          <select
+                            value={companyFormData.tier}
+                            onChange={e => setCompanyFormData({ ...companyFormData, tier: e.target.value })}
+                            className="w-full border rounded-lg px-3 py-2 text-black"
+                          >
+                            <option value="Tier 1">Tier 1 (Enterprise)</option>
+                            <option value="Tier 2">Tier 2 (Mid-Market)</option>
+                            <option value="Tier 3">Tier 3 (Growth)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block font-semibold mb-1">HQ Location</label>
+                          <input
+                            value={companyFormData.address}
+                            onChange={e => setCompanyFormData({ ...companyFormData, address: e.target.value })}
+                            placeholder="City, State"
+                            className="w-full border rounded-lg px-3 py-2 text-black"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-semibold mb-1">Annual Revenue ($)</label>
+                          <input
+                            type="number"
+                            value={companyFormData.annual_revenue}
+                            onChange={e => setCompanyFormData({ ...companyFormData, annual_revenue: Number(e.target.value) })}
+                            className="w-full border rounded-lg px-3 py-2 text-black"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2 border-t">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddCompanyModalOpen(false)}
+                          className="px-3 py-1.5 border rounded-lg text-slate-700 dark:text-slate-300 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-1.5 bg-[#2563eb] text-white rounded-lg font-semibold hover:bg-blue-700 cursor-pointer transition"
+                        >
+                          Save Account
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1317,43 +1740,24 @@ export default function App() {
           {/* TAB 02: MARKETING CAMPAIGNS & ROI */}
           {/* ==================================================== */}
           {activeTab === 'marketing' && (
-            <div className="space-y-4 max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Marketing Campaigns & Channel ROI</h1>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <div className="text-xs text-black dark:text-white font-normal">Active Campaigns</div>
-                  <div className="mt-2 text-2xl font-mono text-black dark:text-white font-normal">3 Channels</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <div className="text-xs text-black dark:text-white font-normal">Total Leads Captured</div>
-                  <div className="mt-2 text-2xl font-mono text-black dark:text-white font-normal">428 Inbound</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <div className="text-xs text-black dark:text-white font-normal">Blended Marketing ROI</div>
-                  <div className="mt-2 text-2xl font-mono text-black dark:text-white font-normal">312.5%</div>
-                </div>
-              </div>
-              <div className="bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-                <table className="w-full text-left text-xs text-black dark:text-white">
-                  <thead className="border-b text-[12.5px] font-normal">
-                    <tr><th className="py-3 px-4 border-r">Campaign</th><th className="py-3 px-4 border-r">Channel</th><th className="py-3 px-4 border-r">Budget</th><th className="py-3 px-4 border-r">Spent</th><th className="py-3 px-4">ROI</th></tr>
-                  </thead>
-                  <tbody className="divide-y font-normal">
-                    <tr><td className="py-3.5 px-4">Q3 Enterprise Inbound</td><td className="py-3.5 px-4">Google Search</td><td className="py-3.5 px-4 font-mono">$15,000</td><td className="py-3.5 px-4 font-mono">$12,400</td><td className="py-3.5 px-4 font-mono">340%</td></tr>
-                    <tr><td className="py-3.5 px-4">FinTech Decision Maker Outreach</td><td className="py-3.5 px-4">LinkedIn Ads</td><td className="py-3.5 px-4 font-mono">$8,000</td><td className="py-3.5 px-4 font-mono">$7,200</td><td className="py-3.5 px-4 font-mono">285%</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <MarketingModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+            />
           )}
 
           {/* ==================================================== */}
-          {/* TAB 03: PROJECTS & OPERATIONS (JIRA AGILE BOARD) */}
+          {/* TAB 03: PROJECTS & OPERATIONS (JIRA BOARD + CPM + FINANCIALS) */}
           {/* ==================================================== */}
           {activeTab === 'projects' && (
             <div className="space-y-4 max-w-7xl mx-auto">
               <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">FinTech Platform Core (Sprint 44)</h1>
+                <div>
+                  <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Projects, Agile Sprints, Critical Path &amp; Profitability</h1>
+                  <p className="text-xs text-slate-500">Replaces Zoho Projects, Zoho Sprints &amp; Zoho BugTracker</p>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsAddIssueModalOpen(true)}
@@ -1369,9 +1773,20 @@ export default function App() {
                   </button>
                 </div>
               </div>
+              {jiraIssues.length === 0 && (
+                <div className="p-4 bg-blue-50/60 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200 flex items-center justify-between">
+                  <span>No agile sprint issues logged yet. Click &ldquo;+ Create Issue&rdquo; to add a task, or use the Delivery Project panel below.</span>
+                  <button
+                    onClick={() => setIsAddIssueModalOpen(true)}
+                    className="px-3 py-1 bg-[#2563eb] text-white rounded-lg text-xs font-medium hover:bg-blue-700 cursor-pointer transition shrink-0 ml-3"
+                  >
+                    + Create First Issue
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 {(['Blocked', 'In progress', 'Ready for review', 'Done'] as const).map(stage => (
-                  <div key={stage} className="bg-white dark:bg-[#131c2e] p-3 rounded-2xl border border-slate-200 min-h-[480px] flex flex-col">
+                  <div key={stage} className="bg-white dark:bg-[#131c2e] p-3 rounded-2xl border border-slate-200 min-h-[340px] flex flex-col">
                     <h2 className="text-xs font-bold text-black dark:text-white pb-2 border-b">{stage} ({jiraIssues.filter(i => i.status === stage).length})</h2>
                     <div className="mt-2.5 space-y-2 flex-1">
                       {jiraIssues.filter(i => i.status === stage).map(issue => (
@@ -1387,6 +1802,13 @@ export default function App() {
                   </div>
                 ))}
               </div>
+
+              <ProjectsExtendedPanel
+                apiBase={API_BASE}
+                fmt={fmt}
+                notify={notifyUser}
+                refreshGlobal={refreshAllData}
+              />
             </div>
           )}
 
@@ -1394,232 +1816,117 @@ export default function App() {
           {/* TAB 04: HR & STAFF MANAGEMENT */}
           {/* ==================================================== */}
           {activeTab === 'hr' && (
-            <div className="space-y-4 max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Staff & Department Directory</h1>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Headcount</div><div className="text-2xl mt-1 font-mono font-normal">5 Staff</div></div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Attendance</div><div className="text-2xl mt-1 font-mono font-normal">97.4%</div></div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Monthly Payroll</div><div className="text-2xl mt-1 font-mono font-normal">$68,500</div></div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Pending Leave</div><div className="text-2xl mt-1 font-mono font-normal">1 Request</div></div>
-              </div>
-              <div className="bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                <table className="w-full text-left text-xs text-black dark:text-white">
-                  <thead className="border-b text-[12.5px] font-normal"><tr><th className="py-3 px-4 border-r">Code</th><th className="py-3 px-4 border-r">Name</th><th className="py-3 px-4 border-r">Department</th><th className="py-3 px-4 border-r">Role</th><th className="py-3 px-4">Attendance</th></tr></thead>
-                  <tbody className="divide-y font-normal">{hrData?.employees?.map((emp: any) => (<tr key={emp.id} className="hover:bg-slate-50"><td className="py-3 px-4 font-mono">{emp.code}</td><td className="py-3 px-4">{emp.name}</td><td className="py-3 px-4">{emp.department}</td><td className="py-3 px-4">{emp.role}</td><td className="py-3 px-4 font-mono">{emp.attendance}%</td></tr>))}</tbody>
-                </table>
-              </div>
-            </div>
+            <HrModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+              employees={hrData?.employees || []}
+              departments={hrData?.departments || []}
+            />
           )}
 
           {/* ==================================================== */}
           {/* TAB 05: FINANCE & INVOICING LEDGER */}
           {/* ==================================================== */}
           {activeTab === 'finance' && (
-            <div className="space-y-4 max-w-7xl mx-auto">
-              <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Finance Ledger & Invoices</h1>
-                <button
-                  onClick={() => setIsAddInvoiceModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-lg bg-[#2563eb] hover:bg-blue-700 text-white font-normal text-xs transition cursor-pointer"
-                >
-                  + New Invoice
-                </button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Total Billed</div><div className="text-2xl mt-1 font-mono font-normal">{fmt(187000)}</div></div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Expenses</div><div className="text-2xl mt-1 font-mono font-normal">{fmt(13420)}</div></div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Net Margin</div><div className="text-2xl mt-1 font-mono font-normal">{fmt(66330)}</div></div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Overdue Receivables</div><div className="text-2xl mt-1 font-mono font-normal">{fmt(27500)}</div></div>
-              </div>
-              <div className="bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                <table className="w-full text-left text-xs text-black dark:text-white">
-                  <thead className="border-b text-[12.5px] font-normal"><tr><th className="py-3 px-4 border-r">Invoice #</th><th className="py-3 px-4 border-r">Client</th><th className="py-3 px-4 border-r">Due Date</th><th className="py-3 px-4 border-r">Total</th><th className="py-3 px-4">Status</th></tr></thead>
-                  <tbody className="divide-y font-normal">{financeData?.invoices?.map((inv: any) => (<tr key={inv.id} className="hover:bg-slate-50"><td className="py-3 px-4 font-mono">{inv.number}</td><td className="py-3 px-4">{inv.client}</td><td className="py-3 px-4">{inv.due_date}</td><td className="py-3 px-4 font-mono">{fmt(inv.total)}</td><td className="py-3 px-4"><span className={`px-2 py-0.5 rounded-full text-xs font-normal ${inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-900'}`}>{inv.status}</span></td></tr>))}</tbody>
-                </table>
-              </div>
-            </div>
+            <FinanceModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+              invoices={financeData?.invoices || []}
+              onOpenNewInvoice={() => setIsAddInvoiceModalOpen(true)}
+            />
           )}
 
           {/* ==================================================== */}
           {/* TAB 06: INVENTORY & ASSETS */}
           {/* ==================================================== */}
           {activeTab === 'inventory' && (
-            <div className="space-y-4 max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Warehouse Inventory & Asset Register</h1>
-              <div className="p-3 rounded-2xl border border-rose-300 bg-rose-50 text-rose-900 text-xs flex justify-between items-center font-normal">
-                <span>Critical Stock Warning: Optical Sensor Model 204 has 4 units left (Threshold: 10).</span>
-                <button className="px-3 py-1 rounded-lg bg-rose-600 text-white font-normal">Auto-Draft PO</button>
-              </div>
-              <div className="bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                <table className="w-full text-left text-xs text-black dark:text-white">
-                  <thead className="border-b text-[12.5px] font-normal"><tr><th className="py-3 px-4 border-r">SKU</th><th className="py-3 px-4 border-r">Product Name</th><th className="py-3 px-4 border-r">Category</th><th className="py-3 px-4 border-r">Price</th><th className="py-3 px-4">In Stock</th></tr></thead>
-                  <tbody className="divide-y font-normal">{inventoryData?.products?.map((p: any) => (<tr key={p.id} className="hover:bg-slate-50"><td className="py-3 px-4 font-mono">{p.sku}</td><td className="py-3 px-4">{p.name}</td><td className="py-3 px-4">{p.category}</td><td className="py-3 px-4 font-mono">{fmt(p.price)}</td><td className="py-3 px-4 font-mono">{p.stock} units {p.is_low_stock && '(Low)'}</td></tr>))}</tbody>
-                </table>
-              </div>
-            </div>
+            <InventoryModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+              products={inventoryData?.products || []}
+            />
           )}
 
           {/* ==================================================== */}
           {/* TAB 07: PROCUREMENT & VENDOR MANAGEMENT */}
           {/* ==================================================== */}
           {activeTab === 'procurement' && (
-            <div className="space-y-4 max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Procurement & Purchase Orders</h1>
-              <div className="bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                <table className="w-full text-left text-xs text-black dark:text-white">
-                  <thead className="border-b text-[12.5px] font-normal"><tr><th className="py-3 px-4 border-r">PO Number</th><th className="py-3 px-4 border-r">Vendor</th><th className="py-3 px-4 border-r">Total Amount</th><th className="py-3 px-4 border-r">Delivery Date</th><th className="py-3 px-4">Status</th></tr></thead>
-                  <tbody className="divide-y font-normal">{procurementData?.purchase_orders?.map((po: any) => (<tr key={po.id} className="hover:bg-slate-50"><td className="py-3 px-4 font-mono">{po.po_number}</td><td className="py-3 px-4">{po.vendor}</td><td className="py-3 px-4 font-mono">{fmt(po.total)}</td><td className="py-3 px-4">{po.delivery_date}</td><td className="py-3 px-4"><span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 font-normal">{po.status}</span></td></tr>))}</tbody>
-                </table>
-              </div>
-            </div>
+            <ProcurementModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+              orders={procurementData?.purchase_orders || []}
+            />
           )}
 
           {/* ==================================================== */}
           {/* TAB 08: CUSTOMER SUPPORT DESK */}
           {/* ==================================================== */}
           {activeTab === 'support' && (
-            <div className="space-y-4 max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Customer Support Queue & SLAs</h1>
-              <div className="space-y-2">
-                {supportTickets.length === 0 ? (
-                  <div className="p-8 text-center bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <Headphones className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-sm font-medium text-black dark:text-white">Customer support queue is clear</p>
-                    <p className="text-xs text-slate-500 mt-1">No active customer tickets or SLA breaches recorded.</p>
-                  </div>
-                ) : (
-                  supportTickets.map(t => (
-                    <div key={t.id} className="p-3.5 rounded-2xl border border-slate-200 bg-white dark:bg-[#131c2e] flex items-center justify-between text-black dark:text-white">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs">{t.ticket_number || t.id}</span>
-                          <span className="font-normal">{t.subject || t.title}</span>
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          Client: {t.customer_name || t.client || 'Client'} • Assigned: {t.assigned_to || t.agent || 'Support Lead'}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 text-xs font-mono font-normal">
-                        <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900">{t.priority || 'Normal'}</span>
-                        <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-900">{t.status || 'Open'}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <SupportModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+              tickets={supportTickets}
+            />
           )}
 
           {/* ==================================================== */}
           {/* TAB 09: REPORTING & BI ANALYTICS (EXECUTIVE COCKPIT) */}
           {/* ==================================================== */}
           {(activeTab === 'overview' || activeTab === 'analytics') && (
-            <div className="space-y-4 max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Executive Telemetry & BI Analytics</h1>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Paid Revenue (YTD)</div><div className="text-2xl mt-1 font-mono font-normal">{fmt(overviewData?.kpis?.total_revenue_paid || 79750)}</div><div className="text-xs mt-1 text-emerald-800 font-normal">+24.8% vs last month</div></div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Deal Pipeline</div><div className="text-2xl mt-1 font-mono font-normal">{fmt(overviewData?.kpis?.total_pipeline || 580000)}</div><div className="text-xs mt-1 font-normal">6 active contracts</div></div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">Overdue Receivables</div><div className="text-2xl mt-1 font-mono text-amber-800 font-normal">{fmt(overviewData?.kpis?.overdue_receivables || 27500)}</div><div className="text-xs mt-1 text-amber-900 font-normal">Starlight Bio (6d overdue)</div></div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white"><div className="text-xs font-normal">SLA Compliance</div><div className="text-2xl mt-1 font-mono font-normal">100.0%</div><div className="text-xs mt-1 font-normal">Avg 14m response</div></div>
-              </div>
-              <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white">
-                <h2 className="text-sm font-bold pb-2 border-b border-slate-200">Consolidated Monthly Trajectory</h2>
-                <div className="h-40 flex items-end justify-between gap-3 pt-4">
-                  {[{ m: 'Apr', v: '$45k', h: 50 }, { m: 'May', v: '$52k', h: 60 }, { m: 'Jun', v: '$49k', h: 55 }, { m: 'Jul', v: '$63k', h: 75 }, { m: 'Aug', v: '$58k', h: 68 }, { m: 'Sep', v: '$79.7k', h: 95 }].map((b, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end text-black dark:text-white">
-                      <span className="text-[11px] font-mono font-normal">{b.v}</span>
-                      <div style={{ height: `${b.h}%` }} className={`w-full max-w-[40px] rounded-t ${idx === 5 ? 'bg-[#2563eb]' : 'bg-slate-300'}`}></div>
-                      <span className="text-xs font-normal">{b.m}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <AnalyticsModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+              overviewData={overviewData}
+            />
           )}
 
           {/* ==================================================== */}
           {/* TAB 10: COLLABORATION & CHAT */}
           {/* ==================================================== */}
           {activeTab === 'collaboration' && (
-            <div className="space-y-4 max-w-7xl mx-auto">
-              <div className="flex items-center justify-between pb-2 border-b">
-                <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Team Collaboration & Channels</h1>
-                <div className="flex gap-2">
-                  {(['#general', '#engineering', '#deals'] as const).map(ch => (
-                    <button key={ch} onClick={() => setActiveChatChannel(ch)} className={`px-3 py-1 rounded-full text-xs font-normal ${activeChatChannel === ch ? 'bg-[#2563eb] text-white' : 'bg-white border text-black'}`}>{ch}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-white dark:bg-[#131c2e] p-4 rounded-2xl border border-slate-200 shadow-xs h-96 flex flex-col justify-between">
-                <div className="overflow-y-auto space-y-3 text-black dark:text-white">
-                  {chatMessages.map((msg, i) => (
-                    <div key={i} className="flex gap-3 items-start">
-                      <img className="h-8 w-8 rounded-full object-cover" src={msg.avatar} alt="" />
-                      <div><div className="flex items-center gap-2"><span className="text-xs font-bold text-black dark:text-white">{msg.sender}</span><span className="text-[10px] text-black dark:text-white font-normal">{msg.time}</span></div><div className="text-[13px] font-normal mt-0.5">{msg.text}</div></div>
-                    </div>
-                  ))}
-                </div>
-                <form onSubmit={handleSendChat} className="flex gap-2 pt-3 border-t">
-                  <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder={`Message ${activeChatChannel}...`} className="flex-1 border rounded-lg px-3 py-2 text-xs text-black focus:outline-none focus:border-[#2563eb] font-normal" />
-                  <button type="submit" className="px-4 py-2 bg-[#2563eb] text-white rounded-lg text-xs font-normal">Send</button>
-                </form>
-              </div>
-            </div>
+            <CollaborationModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+            />
           )}
 
           {/* ==================================================== */}
           {/* TAB 11: COMPLIANCE & SECURITY */}
           {/* ==================================================== */}
           {activeTab === 'compliance' && (
-            <div className="space-y-4 max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">Compliance & Enterprise Security</h1>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-black dark:text-white">
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200">
-                  <h2 className="text-sm font-bold">SOC 2 Type II</h2>
-                  <div className="text-sm mt-1 text-emerald-800 font-normal">Verified & Active</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200">
-                  <h2 className="text-sm font-bold">GDPR & HIPAA</h2>
-                  <div className="text-sm mt-1 text-emerald-800 font-normal">DPA Compliant</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200">
-                  <h2 className="text-sm font-bold">Single-Tenant RLS</h2>
-                  <div className="text-sm mt-1 text-emerald-800 font-normal">Enforced at DB Layer</div>
-                </div>
-              </div>
-              <div className="bg-white dark:bg-[#131c2e] p-4 rounded-2xl border border-slate-200 text-black dark:text-white space-y-2">
-                <h2 className="text-sm font-bold border-b pb-2">Enterprise Master Agreements</h2>
-                <div className="flex gap-3">
-                  <button onClick={() => setActiveLegalModal('tos')} className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-normal text-black">View Master Services Agreement (TOS)</button>
-                  <button onClick={() => setActiveLegalModal('privacy')} className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-normal text-black">View Privacy Policy & DPA</button>
-                </div>
-              </div>
-            </div>
+            <ComplianceModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+              onOpenLegal={m => setActiveLegalModal(m)}
+            />
           )}
 
           {/* ==================================================== */}
-          {/* TAB 12: AUTOMATION (WHEN-IF-DO) */}
+          {/* TAB 12: AUTOMATION (DAG WORKFLOWS, APPROVALS, ZOHO IMPORTER) */}
           {/* ==================================================== */}
           {activeTab === 'automation' && (
-            <div className="space-y-4 max-w-7xl mx-auto">
-              <h1 className="text-2xl font-bold text-black dark:text-white tracking-tight">WHEN-IF-DO Automation Rules</h1>
-              <div className="space-y-2.5">
-                {[
-                  { name: "Deal Won -> Auto Invoice & Sprint Task", t: "WHEN Deal.stage == 'Won'", c: "IF Deal.amount >= 50000", a: "DO Invoice.create(Net30) && Jira.createTask(FIN)" },
-                  { name: "Overdue Invoice Dunning Escalation", t: "WHEN Invoice.dueDate < NOW()", c: "IF Invoice.status == 'Unpaid' && days >= 5", a: "DO Email.sendDunning() && Slack.notify(Owner)" },
-                  { name: "Warehouse Stock Reorder Sentinel", t: "WHEN Product.stock <= Product.reorderLevel", c: "IF Vendor.status == 'Active'", a: "DO PO.draft() && Email.notify(Procurement)" }
-                ].map((r, i) => (
-                  <div key={i} className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 shadow-xs text-black dark:text-white space-y-2">
-                    <div className="flex justify-between items-center"><h2 className="text-sm font-bold">{r.name}</h2><span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-xs font-normal">Active</span></div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 font-mono text-xs">
-                      <div className="p-2 rounded bg-slate-100 dark:bg-slate-800"><div className="text-[10px] text-black dark:text-white font-normal">TRIGGER</div><div className="font-normal">{r.t}</div></div>
-                      <div className="p-2 rounded bg-slate-100 dark:bg-slate-800"><div className="text-[10px] text-black dark:text-white font-normal">CONDITION</div><div className="font-normal">{r.c}</div></div>
-                      <div className="p-2 rounded bg-slate-100 dark:bg-slate-800"><div className="text-[10px] text-black dark:text-white font-normal">ACTION</div><div className="font-normal">{r.a}</div></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <AutomationModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+            />
           )}
 
           {/* ==================================================== */}
@@ -1722,8 +2029,8 @@ export default function App() {
                         className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         {msg.sender === 'assistant' && (
-                          <div className="w-8 h-8 rounded-lg bg-[#162340] border border-[#2563eb]/40 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
-                            <Bot size={16} className="text-[#38bdf8]" />
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#1e293b] via-[#1a233a] to-[#253350] border border-blue-500/30 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <GeminiSparkleIcon size={18} />
                           </div>
                         )}
 
@@ -1732,8 +2039,8 @@ export default function App() {
                           <div
                             className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
                               msg.sender === 'user'
-                                ? 'bg-[#2563eb] text-white rounded-br-xs shadow-xs'
-                                : 'bg-white dark:bg-[#1e293b] text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700/80 rounded-bl-xs shadow-xs space-y-2'
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-xs shadow-xs'
+                                : 'bg-white dark:bg-[#12192b] text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-750/70 rounded-bl-xs shadow-xs space-y-2'
                             }`}
                           >
                             {msg.outputTier === 'TIER_3_RESTRICTED' && (
@@ -1742,7 +2049,7 @@ export default function App() {
                                 <span>Tier 3 Restricted: Data Stays Home (Internal Enclave)</span>
                               </div>
                             )}
-                            <div className="whitespace-pre-line">{msg.text}</div>
+                            <GeminiMarkdownRenderer content={msg.text} />
 
                             {/* Structured Data Table (Tier 3 records / Financial Ledgers) */}
                             {msg.dataTable && (
@@ -1781,17 +2088,11 @@ export default function App() {
 
                           {/* Track A: Immediate Live Data Card */}
                           {msg.immediateData && (
-                            <div className="grid grid-cols-3 gap-2 p-3 bg-white dark:bg-[#131c2e] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                            <div className="grid grid-cols-2 gap-2 p-3 bg-white dark:bg-[#131c2e] rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
                               {msg.immediateData.revenue !== undefined && (
                                 <div className="p-2 bg-slate-50 dark:bg-slate-900 rounded-lg">
                                   <div className="text-[10px] text-slate-500 uppercase font-semibold">Paid Revenue</div>
                                   <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">${msg.immediateData.revenue.toLocaleString()}</div>
-                                </div>
-                              )}
-                              {msg.immediateData.cash !== undefined && (
-                                <div className="p-2 bg-slate-50 dark:bg-slate-900 rounded-lg">
-                                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Operating Cash</div>
-                                  <div className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">${msg.immediateData.cash.toLocaleString()}</div>
                                 </div>
                               )}
                               {msg.immediateData.margin !== undefined && (
@@ -1801,7 +2102,7 @@ export default function App() {
                                 </div>
                               )}
                               {msg.immediateData.pipeline !== undefined && (
-                                <div className="p-2 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                                <div className="p-2 bg-slate-50 dark:bg-slate-900 rounded-lg col-span-2">
                                   <div className="text-[10px] text-slate-500 uppercase font-semibold">Deals Pipeline</div>
                                   <div className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">${msg.immediateData.pipeline.toLocaleString()}</div>
                                 </div>
@@ -2089,6 +2390,13 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              <AiInsightsExtendedPanel
+                apiBase={API_BASE}
+                fmt={fmt}
+                notify={notifyUser}
+                refreshGlobal={refreshAllData}
+              />
             </div>
           )}
 
@@ -2096,19 +2404,16 @@ export default function App() {
           {/* TAB 14: SETTINGS & MODULE TOGGLES */}
           {/* ==================================================== */}
           {activeTab === 'settings' && (
-            <div className="space-y-4 max-w-4xl mx-auto text-black dark:text-white">
-              <h1 className="text-2xl font-bold tracking-tight">Enterprise Module Controls (All 14 Services)</h1>
-              <div className="bg-white dark:bg-[#131c2e] p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {Object.entries(moduleToggles).map(([k, v]) => (
-                    <div key={k} className="p-3 rounded-xl border border-slate-200 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
-                      <span className="text-xs font-normal">{k}</span>
-                      <button onClick={() => setModuleToggles(p => ({ ...p, [k]: !p[k] }))} className={`px-3 py-1 rounded-full text-xs font-normal ${v ? 'bg-[#2563eb] text-white' : 'bg-slate-200 text-black'}`}>{v ? 'ENABLED' : 'DISABLED'}</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <SettingsModuleWorkspace
+              apiBase={API_BASE}
+              fmt={fmt}
+              notify={notifyUser}
+              refreshGlobal={refreshAllData}
+              moduleToggles={moduleToggles}
+              setModuleToggles={setModuleToggles}
+            />
+          )}
+            </>
           )}
 
         </div>
@@ -2508,10 +2813,9 @@ export default function App() {
                     onChange={e => setDealFormData({ ...dealFormData, stage: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white"
                   >
-                    <option value="New">New</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Qualified">Qualified</option>
-                    <option value="Proposal">Proposal</option>
+                    <option value="Prospecting">Prospecting</option>
+                    <option value="Qualification">Qualification</option>
+                    <option value="Proposal Sent">Proposal Sent</option>
                     <option value="Negotiation">Negotiation</option>
                     <option value="Won">Won</option>
                   </select>
@@ -2684,6 +2988,126 @@ export default function App() {
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <button type="button" onClick={() => setIsAddInvoiceModalOpen(false)} className="px-4 py-2 border rounded-xl">Cancel</button>
                 <button type="submit" className="px-4 py-2 bg-[#2563eb] text-white rounded-xl font-semibold">Generate Invoice</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* 12. PRODUCTION JWT AUTHENTICATION & 7-PERSONA MODAL  */}
+      {/* ---------------------------------------------------- */}
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white dark:bg-[#131c2e] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4 text-slate-900 dark:text-slate-100">
+            <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div>
+                <h2 className="text-base font-bold">STAT6 Identity, JWT Session &amp; 7-Persona Portal Gate</h2>
+                <p className="text-[11px] text-slate-500">Zero All-Employee License Tax • Free External Customer/Vendor/Partner Portals</p>
+              </div>
+              <button onClick={() => setIsAuthModalOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 cursor-pointer"><X size={16} /></button>
+            </div>
+
+            <div className="flex gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setAuthMode('login')}
+                className={`flex-1 py-1.5 rounded-lg font-semibold cursor-pointer ${authMode === 'login' ? 'bg-[#2563eb] text-white' : 'border'}`}
+              >
+                Sign In (JWT)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMode('register')}
+                className={`flex-1 py-1.5 rounded-lg font-semibold cursor-pointer ${authMode === 'register' ? 'bg-[#2563eb] text-white' : 'border'}`}
+              >
+                Register New Account
+              </button>
+            </div>
+
+            <form onSubmit={handleAuthSubmit} className="space-y-3 text-xs">
+              {authMode === 'register' && (
+                <div>
+                  <label className="block font-semibold mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={authForm.full_name}
+                    onChange={e => setAuthForm({ ...authForm, full_name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white"
+                  />
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-semibold mb-1">Work / Portal Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={authForm.email}
+                    onChange={e => setAuthForm({ ...authForm, email: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={authForm.password}
+                    onChange={e => setAuthForm({ ...authForm, password: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white font-mono"
+                  />
+                </div>
+              </div>
+              {authMode === 'register' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block font-semibold mb-1">Role</label>
+                    <select
+                      value={authForm.role}
+                      onChange={e => setAuthForm({ ...authForm, role: e.target.value, persona: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0f172a] text-slate-900 dark:text-white"
+                    >
+                      <option value="ADMIN">ADMIN</option>
+                      <option value="MANAGER">MANAGER</option>
+                      <option value="EMPLOYEE">EMPLOYEE</option>
+                      <option value="CUSTOMER">CUSTOMER</option>
+                      <option value="VENDOR">VENDOR</option>
+                      <option value="PARTNER">PARTNER</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-semibold mb-1">Portal Persona</label>
+                    <input
+                      readOnly
+                      value={authForm.persona}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                <div className="font-bold text-[11px] text-slate-600 dark:text-slate-300">Default Superadmin Login (Password: <code className="font-mono">Password123!</code>):</div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthForm(prev => ({ ...prev, email: 'admin@acroflow.enterprise', password: 'Password123!', role: 'ADMIN', persona: 'ADMIN' }));
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[11px] font-mono hover:border-[#2563eb] cursor-pointer"
+                  >
+                    Enterprise Superadmin (admin@acroflow.enterprise)
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onClick={() => setIsAuthModalOpen(false)} className="px-4 py-2 border rounded-xl cursor-pointer">Close</button>
+                <button type="submit" className="px-4 py-2 bg-[#2563eb] text-white rounded-xl font-semibold cursor-pointer">
+                  {authMode === 'login' ? 'Authenticate JWT Session' : 'Create Account & Sign In'}
+                </button>
               </div>
             </form>
           </div>

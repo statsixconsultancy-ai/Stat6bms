@@ -65,3 +65,62 @@ class HITLApprovalRequest(TenantModel):
     expires_at = Column(String(64), nullable=True)
 
     task = relationship("ScheduledTask", back_populates="hitl_requests")
+
+
+# =========================================================================
+# Phase 5: Visual Workflows, Unified Approvals & Zoho Migration Models
+# =========================================================================
+class WorkflowDefinition(TenantModel):
+    __tablename__ = "auto_workflows"
+
+    name = Column(String(255), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    trigger_event = Column(String(100), nullable=False, index=True)
+    nodes = Column(Text, nullable=False, default="[]")  # JSON serialized DAG nodes
+    is_active = Column(Boolean, default=True, index=True)
+    execution_count = Column(Integer, default=0)
+
+    executions = relationship("WorkflowExecution", back_populates="workflow", cascade="all, delete-orphan")
+
+
+class WorkflowExecution(TenantModel):
+    __tablename__ = "auto_workflow_executions"
+
+    workflow_id = Column(String(36), ForeignKey("auto_workflows.id"), nullable=False, index=True)
+    status = Column(String(32), default="COMPLETED", index=True)  # RUNNING, COMPLETED, FAILED, PAUSED
+    trigger_payload = Column(Text, nullable=True)  # JSON string
+    current_node_id = Column(String(64), nullable=True)
+    step_history = Column(Text, nullable=False, default="[]")  # JSON string of steps
+    error_message = Column(Text, nullable=True)
+
+    workflow = relationship("WorkflowDefinition", back_populates="executions")
+
+
+class ApprovalRequest(TenantModel):
+    __tablename__ = "auto_unified_approvals"
+
+    module = Column(String(64), nullable=False, index=True)  # PROCUREMENT, FINANCE, CRM, HR
+    record_type = Column(String(64), nullable=False, index=True)  # PURCHASE_REQUISITION, QUOTE_DISCOUNT, LEAVE_REQUEST, EXPENSE, INVOICE
+    record_id = Column(String(64), nullable=False, index=True)
+    requester_id = Column(String(64), nullable=False)
+    requester_name = Column(String(255), nullable=True)
+    approver_role = Column(String(64), nullable=False, default="MANAGER", index=True)
+    approver_id = Column(String(64), nullable=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    amount = Column(Float, default=0.0)
+    status = Column(String(32), default="PENDING", index=True)  # PENDING, APPROVED, REJECTED, DELEGATED
+    decision_by_id = Column(String(64), nullable=True)
+    decision_notes = Column(Text, nullable=True)
+    delegated_to_id = Column(String(64), nullable=True)
+    decided_at = Column(String(64), nullable=True)
+
+
+class ZohoMigrationJob(TenantModel):
+    __tablename__ = "auto_zoho_migrations"
+
+    status = Column(String(32), default="SUCCESS", index=True)
+    records_migrated = Column(Text, default="{}")  # JSON summary
+    canonical_mappings = Column(Text, default="[]")  # JSON mappings
+    validation_errors = Column(Text, default="[]")  # JSON errors
+    elapsed_ms = Column(Float, default=0.0)

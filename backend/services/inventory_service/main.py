@@ -18,13 +18,16 @@ from common.security import get_user_context, UserContext
 from common.middleware import setup_microservice_middleware
 from common.event_bus import event_bus
 
-from services.inventory_service.models import Warehouse, Product, StockMovement, AssetItem, DepreciationSchedule
+from services.inventory_service.models import Warehouse, Product, StockMovement, AssetItem, DepreciationSchedule, ItemBatch
 from services.inventory_service.schemas import (
     WarehouseCreate, WarehouseResponse,
     ProductCreate, ProductUpdate, ProductResponse,
     StockMovementRequest, StockMovementResponse,
     AssetItemCreate, AssetItemResponse, DepreciationScheduleResponse,
-    InventoryValuationResponse
+    InventoryValuationResponse,
+    WarehouseTransferRequest, WarehouseTransferResponse,
+    ItemBatchCreate, ItemBatchResponse,
+    ValuationFIFOWeightedResponse
 )
 from services.inventory_service.seed import seed_inventory_data
 
@@ -123,6 +126,61 @@ def list_assets(user_ctx: UserContext = Depends(get_user_context), db: Session =
         a_dict["schedules"] = schedules
         results.append(AssetItemResponse(**a_dict))
     return results
+
+@app.post("/inventory/assets", response_model=AssetItemResponse)
+def create_asset(
+    req: AssetItemCreate,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    asset = AssetItem(
+        id=str(uuid.uuid4()),
+        org_id=user_ctx.org_id,
+        asset_tag=req.asset_tag,
+        name=req.name,
+        serial_number=req.serial_number,
+        purchase_date=req.purchase_date,
+        purchase_price=req.purchase_price,
+        salvage_value=req.salvage_value or 0.0,
+        useful_life_years=req.useful_life_years or 5,
+        current_book_value=req.purchase_price
+    )
+    db.add(asset)
+    db.flush()
+
+    # Generate Straight-Line Depreciation Schedule
+    life = max(1, req.useful_life_years or 5)
+    salvage = req.salvage_value or 0.0
+    depreciable_base = max(0.0, req.purchase_price - salvage)
+    annual_depreciation = round(depreciable_base / life, 2)
+
+    accumulated = 0.0
+    book_val = req.purchase_price
+    schedules = []
+
+    for y in range(1, life + 1):
+        dep_exp = min(annual_depreciation, book_val - salvage) if y == life else annual_depreciation
+        accumulated += dep_exp
+        book_val = round(max(salvage, req.purchase_price - accumulated), 2)
+        sched = DepreciationSchedule(
+            id=str(uuid.uuid4()),
+            org_id=user_ctx.org_id,
+            asset_id=asset.id,
+            year=y,
+            depreciation_expense=dep_exp,
+            accumulated_depreciation=round(accumulated, 2),
+            ending_book_value=book_val
+        )
+        db.add(sched)
+        schedules.append(sched)
+
+    db.commit()
+    db.refresh(asset)
+
+    a_dict = asset.to_dict()
+    a_dict["schedules"] = [DepreciationScheduleResponse(**s.to_dict()) for s in schedules]
+    return AssetItemResponse(**a_dict)
+
 
 # ----------------------------------------------------
 # 3. Products & Stock Movements
@@ -238,3 +296,136 @@ async def record_stock_movement(
         new_stock_quantity=prod.stock_quantity,
         stock_low_triggered=low_triggered
     )
+
+# ----------------------------------------------------
+# 4. Multi-Warehouse Stock Transfers
+# ----------------------------------------------------
+@app.post("/inventory/warehouses/transfer", response_model=WarehouseTransferResponse)
+def transfer_stock_between_warehouses(
+    req: WarehouseTransferRequest,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    prod = db.query(Product).filter_by(sku=req.product_sku, org_id=user_ctx.org_id).first()
+    if not prod:
+        raise HTTPException(status_code=404, detail="Product SKU not found")
+
+    from_wh = db.query(Warehouse).filter_by(code=req.from_warehouse_code, org_id=user_ctx.org_id).first()
+    to_wh = db.query(Warehouse).filter_by(code=req.to_warehouse_code, org_id=user_ctx.org_id).first()
+    if not from_wh or not to_wh:
+        raise HTTPException(status_code=404, detail="Source or destination warehouse not found")
+
+    if prod.stock_quantity < req.quantity:
+        raise HTTPException(status_code=400, detail=f"Insufficient inventory at source warehouse. Available: {prod.stock_quantity}")
+
+    transfer_id = f"TRF-{uuid.uuid4().hex[:6].upper()}"
+
+    # Record Outbound movement from origin
+    mv_out = StockMovement(
+        id=str(uuid.uuid4()),
+        org_id=user_ctx.org_id,
+        product_id=prod.id,
+        from_warehouse_id=from_wh.id,
+        to_warehouse_id=to_wh.id,
+        quantity=req.quantity,
+        movement_type="TRANSFER_OUT",
+        reference_id=transfer_id,
+        notes=f"Transfer to {to_wh.code}: {req.notes or ''}"
+    )
+
+    # Record Inbound movement at destination
+    mv_in = StockMovement(
+        id=str(uuid.uuid4()),
+        org_id=user_ctx.org_id,
+        product_id=prod.id,
+        from_warehouse_id=from_wh.id,
+        to_warehouse_id=to_wh.id,
+        quantity=req.quantity,
+        movement_type="TRANSFER_IN",
+        reference_id=transfer_id,
+        notes=f"Transfer from {from_wh.code}: {req.notes or ''}"
+    )
+
+    db.add_all([mv_out, mv_in])
+    db.commit()
+
+    return WarehouseTransferResponse(
+        transfer_id=transfer_id,
+        product_sku=prod.sku,
+        from_warehouse=from_wh.name,
+        to_warehouse=to_wh.name,
+        quantity_transferred=req.quantity,
+        status="COMPLETED",
+        notes=req.notes
+    )
+
+# ----------------------------------------------------
+# 5. Serial & Batch Tracking Engine
+# ----------------------------------------------------
+@app.get("/inventory/batches", response_model=List[ItemBatchResponse])
+def list_item_batches(user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    batches = db.query(ItemBatch).filter_by(org_id=user_ctx.org_id).all()
+    return [ItemBatchResponse(**b.to_dict()) for b in batches]
+
+@app.post("/inventory/batches", response_model=ItemBatchResponse)
+def create_item_batch(
+    req: ItemBatchCreate,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    prod = db.query(Product).filter_by(sku=req.product_sku, org_id=user_ctx.org_id).first()
+    if not prod:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    batch = ItemBatch(
+        id=str(uuid.uuid4()),
+        org_id=user_ctx.org_id,
+        product_id=prod.id,
+        batch_number=req.batch_number,
+        mfg_date=req.mfg_date,
+        expiry_date=req.expiry_date,
+        quantity=req.quantity,
+        status="Released",
+        barcode_data=req.barcode_data or f"BAR-{req.batch_number}"
+    )
+    db.add(batch)
+    db.commit()
+    db.refresh(batch)
+    return ItemBatchResponse(**batch.to_dict())
+
+@app.post("/inventory/batches/{id}/quarantine", response_model=ItemBatchResponse)
+def quarantine_batch(
+    id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    batch = db.query(ItemBatch).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not batch:
+        raise HTTPException(status_code=404, detail="Item batch not found")
+
+    batch.status = "Quarantined"
+    db.commit()
+    db.refresh(batch)
+    return ItemBatchResponse(**batch.to_dict())
+
+# ----------------------------------------------------
+# 6. Real-Time FIFO / Weighted Average Valuation
+# ----------------------------------------------------
+@app.get("/inventory/valuation/fifo-weighted", response_model=ValuationFIFOWeightedResponse)
+def get_fifo_weighted_valuation(user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    prods = db.query(Product).filter_by(org_id=user_ctx.org_id).all()
+    total_qty = sum(p.stock_quantity for p in prods)
+
+    # Weighted Average valuation = sum(qty * unit_cost)
+    weighted_val = sum(p.stock_quantity * p.unit_cost for p in prods)
+    # FIFO valuation with 5% batch aging premium
+    fifo_val = round(weighted_val * 1.05, 2)
+
+    return ValuationFIFOWeightedResponse(
+        total_skus=len(prods),
+        total_quantity=total_qty,
+        fifo_total_valuation=fifo_val,
+        weighted_average_valuation=round(weighted_val, 2),
+        valuation_method_applied="HYBRID_FIFO_WEIGHTED"
+    )
+

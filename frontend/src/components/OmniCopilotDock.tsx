@@ -17,8 +17,12 @@ import {
   Lock,
   RefreshCw,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
+import { GeminiMarkdownRenderer } from './GeminiMarkdownRenderer';
+import { GeminiSparkleIcon, GeminiMiniSparkle } from './GeminiIcons';
 
 export interface DataTableData {
   columns: string[];
@@ -63,7 +67,8 @@ export interface CopilotMessage {
   confirmationCard?: ConfirmationCardData;
   immediateData?: {
     revenue?: number;
-    cash?: number;
+    expenses?: number;
+    profit?: number;
     margin?: number;
     pipeline?: number;
     sprint?: string;
@@ -107,9 +112,17 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [copiedTableIdx, setCopiedTableIdx] = useState<number | null>(null);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<string, 'up' | 'down'>>({});
   const [activeTabInside, setActiveTabInside] = useState<'chat' | 'context'>('chat');
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const handleCopyMessage = (text: string, msgId: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMsgId(msgId);
+    setTimeout(() => setCopiedMsgId(null), 2000);
+  };
 
   // Global hotkey: Ctrl + / or Cmd + / to toggle dock
   useEffect(() => {
@@ -165,7 +178,7 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
     switch (tab) {
       case 'finance':
         return [
-          'What are our current cash reserves and overdue receivables?',
+          'What is our financial health and operating revenue today?',
           'Schedule Net30 overdue invoice reminder to Acme Corp tomorrow at 10 AM',
           'Show all unpaid invoices across enterprise clients'
         ];
@@ -197,7 +210,7 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
         ];
       default:
         return [
-          'What is our financial health and cash position today?',
+          'What is our financial performance and operating margin today?',
           'Give me complete salary and compensation details of all employees',
           'Schedule Net30 reminder for Acme Corp tomorrow at 10 AM (Require Approval)',
           'What is blocked on Sprint 44 right now?'
@@ -298,7 +311,8 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
           } : undefined,
           immediateData: data.immediate_data ? {
             revenue: data.immediate_data.total_paid_revenue,
-            cash: data.immediate_data.cash_reserves,
+            expenses: data.immediate_data.total_expenses,
+            profit: data.immediate_data.net_operating_profit,
             margin: data.immediate_data.operating_margin_pct,
             pipeline: data.immediate_data.pipeline_value
           } : undefined,
@@ -394,14 +408,14 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
             title="Open STAT6 Omnipresent Copilot (Ctrl + /)"
           >
             <div className="relative flex items-center justify-center">
-              <Bot size={18} className="text-amber-300 transition-transform group-hover:rotate-6" />
+              <GeminiSparkleIcon size={20} className="transition-transform group-hover:rotate-12 duration-300" />
               <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/40 animate-ping"></span>
             </div>
             <div className="flex flex-col text-left">
               <span className="text-xs font-bold tracking-wide flex items-center gap-1.5">
-                STAT6 Omni-Copilot
-                <span className="px-1.5 py-0.2 text-[9px] font-mono bg-blue-900/80 text-blue-200 rounded border border-blue-400/30">
-                  Agentic
+                STAT6 Copilot
+                <span className="px-1.5 py-0.2 text-[9px] font-sans font-semibold bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-200 rounded-full border border-blue-400/30">
+                  ✦ Gemini AI
                 </span>
               </span>
               <span className="text-[10px] text-blue-200/80 font-mono">
@@ -427,19 +441,19 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
           }`}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#1e293b]/90 border-b border-slate-700/80 flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 bg-[#11192e] border-b border-slate-750 flex-shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-xs">
-                <Bot size={18} className="text-amber-300" />
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#1e293b] via-[#1a233a] to-[#253350] border border-blue-500/30 flex items-center justify-center text-white shadow-sm">
+                <GeminiSparkleIcon size={20} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-xs font-bold text-white tracking-wide">
-                    STAT6 Omni-Copilot
+                    STAT6 Copilot
                   </h3>
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-medium bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    14 Microservices
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-medium bg-gradient-to-r from-blue-950/80 via-purple-950/80 to-slate-900 text-blue-300 border border-blue-500/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+                    Gemini-Class Mesh
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-400">
@@ -588,173 +602,231 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
                 {messages.map((msg, idx) => (
                   <div
                     key={msg.id}
-                    className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+                    className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} w-full`}
                   >
-                    {/* Role Tag & Tier Guard */}
-                    <div className="flex items-center gap-2 mb-1 px-1">
-                      <span className="text-[10px] text-slate-400">
-                        {msg.sender === 'user' ? 'You' : 'STAT6 Copilot'} • {msg.timestamp}
-                      </span>
-                      {msg.outputTier === 'TIER_3_RESTRICTED' && (
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
-                          <Lock size={9} />
-                          Tier 3: In-House Boundary
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Bubble Content */}
-                    <div
-                      className={`rounded-2xl p-3 text-xs leading-relaxed max-w-[95%] ${
-                        msg.sender === 'user'
-                          ? 'bg-[#2563eb] text-white rounded-br-xs shadow-xs'
-                          : 'bg-[#1e293b] text-slate-100 border border-slate-700/80 rounded-bl-xs shadow-xs space-y-2.5'
-                      }`}
-                    >
-                      <div className="whitespace-pre-line">{msg.text}</div>
-
-                      {/* DATA TABLE RENDERER (Tier 3 Employee Compensation / Ledgers) */}
-                      {msg.dataTable && (
-                        <div className="mt-2 rounded-xl border border-slate-700 bg-[#0f172a] overflow-hidden">
-                          <div className="flex items-center justify-between px-3 py-1.5 bg-slate-800/80 border-b border-slate-700 text-[10px]">
-                            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                              <TableIcon size={12} className="text-blue-400" />
-                              Structured Data View ({msg.dataTable.rows.length} rows)
-                            </span>
-                            <button
-                              onClick={() => handleCopyTable(msg.dataTable!, idx)}
-                              className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1 transition"
-                              title="Copy CSV"
-                            >
-                              {copiedTableIdx === idx ? (
-                                <>
-                                  <Check size={10} className="text-emerald-400" />
-                                  <span>Copied</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy size={10} />
-                                  <span>Export CSV</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                          <div className="overflow-x-auto max-h-56">
-                            <table className="w-full text-[11px] text-left">
-                              <thead className="bg-slate-900/90 text-slate-400 text-[10px] uppercase font-semibold border-b border-slate-800">
-                                <tr>
-                                  {msg.dataTable.columns.map((col, cIdx) => (
-                                    <th key={cIdx} className="px-2.5 py-1.5 whitespace-nowrap">
-                                      {col}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-800/60 font-mono">
-                                {msg.dataTable.rows.map((row, rIdx) => (
-                                  <tr key={rIdx} className="hover:bg-slate-800/40">
-                                    {row.map((val, cellIdx) => (
-                                      <td key={cellIdx} className="px-2.5 py-1.5 whitespace-nowrap text-slate-200">
-                                        {String(val ?? '-')}
-                                      </td>
-                                    ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                    {msg.sender === 'user' ? (
+                      <div className="flex flex-col items-end max-w-[85%] self-end">
+                        <div className="text-[10px] text-slate-400 mb-1 px-1">
+                          You • {msg.timestamp}
                         </div>
-                      )}
-
-                      {/* SCHEDULED TASK CARD */}
-                      {msg.scheduledTask && (
-                        <div className="p-3 bg-blue-950/40 rounded-xl border border-blue-800/80 space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-semibold text-blue-300 flex items-center gap-1.5">
-                              <Clock size={12} className="text-blue-400" />
-                              Scheduled Background Task
-                            </span>
-                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-semibold ${
-                              msg.scheduledTask.status.includes('APPROVED')
-                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                                : 'bg-blue-900/60 text-blue-200 border border-blue-700'
-                            }`}>
-                              {msg.scheduledTask.status}
-                            </span>
-                          </div>
-                          <div className="text-xs font-medium text-white">
-                            {msg.scheduledTask.task_name}
-                          </div>
-                          <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-0.5">
-                            <span>Target: {msg.scheduledTask.target_service}</span>
-                            <span>{msg.scheduledTask.scheduled_for}</span>
-                          </div>
+                        <div className="rounded-2xl rounded-tr-xs px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs leading-relaxed shadow-sm">
+                          {msg.text}
                         </div>
-                      )}
-
-                      {/* HITL GOVERNANCE APPROVAL CARD */}
-                      {msg.hitlRequest && (
-                        <div className="p-3 bg-amber-950/40 rounded-xl border border-amber-800/80 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <ShieldCheck size={14} className="text-amber-400" />
-                              <span className="font-bold text-amber-200 text-xs">
-                                Human-in-the-Loop Gate
-                              </span>
-                            </div>
-                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
-                              msg.hitlRequest.status === 'APPROVED'
-                                ? 'bg-emerald-900 text-emerald-200'
-                                : msg.hitlRequest.status === 'REJECTED'
-                                ? 'bg-rose-900 text-rose-200'
-                                : 'bg-amber-900 text-amber-200'
-                            }`}>
-                              {msg.hitlRequest.status}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-start w-full">
+                        {/* Gemini Assistant Header */}
+                        <div className="flex items-center gap-2 mb-1 px-1">
+                          <GeminiMiniSparkle size={13} />
+                          <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                            STAT6 Copilot
+                            <span className="text-[9px] font-sans font-medium px-1.5 py-0.2 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/30">
+                              ✦ Gemini Mesh
                             </span>
-                          </div>
-                          <p className="text-[11px] text-amber-100/90 leading-relaxed">
-                            {msg.hitlRequest.summary}
-                          </p>
-
-                          {msg.hitlRequest.status === 'PENDING' && (
-                            <div className="flex items-center gap-2 pt-1">
-                              <button
-                                onClick={() => handleHitlDecision(msg.id, msg.hitlRequest!.id, 'APPROVED')}
-                                className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px] transition shadow-xs cursor-pointer"
-                              >
-                                Authorize &amp; Dispatch
-                              </button>
-                              <button
-                                onClick={() => handleHitlDecision(msg.id, msg.hitlRequest!.id, 'REJECTED')}
-                                className="py-1.5 px-3 bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 border border-slate-700 rounded-lg font-semibold text-[11px] transition cursor-pointer"
-                              >
-                                Reject
-                              </button>
-                            </div>
+                          </span>
+                          <span className="text-[10px] text-slate-500">• {msg.timestamp}</span>
+                          {msg.outputTier === 'TIER_3_RESTRICTED' && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
+                              <Lock size={9} />
+                              Tier 3: In-House Boundary
+                            </span>
                           )}
                         </div>
-                      )}
 
-                      {/* Action Confirmation Card */}
-                      {msg.confirmationCard && (
-                        <div className="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-1.5">
-                          <div className="font-semibold text-white flex items-center gap-1.5">
-                            <CheckCircle2 size={13} className="text-emerald-400" />
-                            {msg.confirmationCard.title}
+                        {/* Gemini Assistant Card */}
+                        <div className="w-full rounded-2xl rounded-tl-xs p-3.5 bg-[#12192b] border border-slate-750/70 text-slate-100 shadow-sm space-y-2.5">
+                          {/* Markdown formatted body */}
+                          <GeminiMarkdownRenderer content={msg.text} />
+
+                          {/* DATA TABLE RENDERER (Tier 3 Employee Compensation / Ledgers) */}
+                          {msg.dataTable && (
+                            <div className="mt-2 rounded-xl border border-slate-700 bg-[#0f172a] overflow-hidden">
+                              <div className="flex items-center justify-between px-3 py-1.5 bg-slate-800/80 border-b border-slate-700 text-[10px]">
+                                <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                                  <TableIcon size={12} className="text-blue-400" />
+                                  Structured Data View ({msg.dataTable.rows.length} rows)
+                                </span>
+                                <button
+                                  onClick={() => handleCopyTable(msg.dataTable!, idx)}
+                                  className="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 flex items-center gap-1 transition cursor-pointer"
+                                  title="Copy CSV"
+                                >
+                                  {copiedTableIdx === idx ? (
+                                    <>
+                                      <Check size={10} className="text-emerald-400" />
+                                      <span>Copied</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy size={10} />
+                                      <span>Export CSV</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              <div className="overflow-x-auto max-h-56">
+                                <table className="w-full text-[11px] text-left">
+                                  <thead className="bg-slate-900/90 text-slate-400 text-[10px] uppercase font-semibold border-b border-slate-800">
+                                    <tr>
+                                      {msg.dataTable.columns.map((col, cIdx) => (
+                                        <th key={cIdx} className="px-2.5 py-1.5 whitespace-nowrap">
+                                          {col}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                                    {msg.dataTable.rows.map((row, rIdx) => (
+                                      <tr key={rIdx} className="hover:bg-slate-800/40">
+                                        {row.map((val, cellIdx) => (
+                                          <td key={cellIdx} className="px-2.5 py-1.5 whitespace-nowrap text-slate-200">
+                                            {String(val ?? '-')}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* SCHEDULED TASK CARD */}
+                          {msg.scheduledTask && (
+                            <div className="p-3 bg-blue-950/40 rounded-xl border border-blue-800/80 space-y-1.5">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-blue-300 flex items-center gap-1.5">
+                                  <Clock size={12} className="text-blue-400" />
+                                  Scheduled Background Task
+                                </span>
+                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-semibold ${
+                                  msg.scheduledTask.status.includes('APPROVED')
+                                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                                    : 'bg-blue-900/60 text-blue-200 border border-blue-700'
+                                }`}>
+                                  {msg.scheduledTask.status}
+                                </span>
+                              </div>
+                              <div className="text-xs font-medium text-white">
+                                {msg.scheduledTask.task_name}
+                              </div>
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-0.5">
+                                <span>Target: {msg.scheduledTask.target_service}</span>
+                                <span>{msg.scheduledTask.scheduled_for}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* HITL GOVERNANCE APPROVAL CARD */}
+                          {msg.hitlRequest && (
+                            <div className="p-3 bg-amber-950/40 rounded-xl border border-amber-800/80 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <ShieldCheck size={14} className="text-amber-400" />
+                                  <span className="font-bold text-amber-200 text-xs">
+                                    Human-in-the-Loop Gate
+                                  </span>
+                                </div>
+                                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
+                                  msg.hitlRequest.status === 'APPROVED'
+                                    ? 'bg-emerald-900 text-emerald-200'
+                                    : msg.hitlRequest.status === 'REJECTED'
+                                    ? 'bg-rose-900 text-rose-200'
+                                    : 'bg-amber-900 text-amber-200'
+                                }`}>
+                                  {msg.hitlRequest.status}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-amber-100/90 leading-relaxed">
+                                {msg.hitlRequest.summary}
+                              </p>
+
+                              {msg.hitlRequest.status === 'PENDING' && (
+                                <div className="flex items-center gap-2 pt-1">
+                                  <button
+                                    onClick={() => handleHitlDecision(msg.id, msg.hitlRequest!.id, 'APPROVED')}
+                                    className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px] transition shadow-xs cursor-pointer"
+                                  >
+                                    Authorize &amp; Dispatch
+                                  </button>
+                                  <button
+                                    onClick={() => handleHitlDecision(msg.id, msg.hitlRequest!.id, 'REJECTED')}
+                                    className="py-1.5 px-3 bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 border border-slate-700 rounded-lg font-semibold text-[11px] transition cursor-pointer"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Action Confirmation Card */}
+                          {msg.confirmationCard && (
+                            <div className="p-3 bg-slate-900 rounded-xl border border-slate-700 space-y-1.5">
+                              <div className="font-semibold text-white flex items-center gap-1.5">
+                                <CheckCircle2 size={13} className="text-emerald-400" />
+                                {msg.confirmationCard.title}
+                              </div>
+                              <p className="text-[11px] text-slate-300">
+                                {msg.confirmationCard.details}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Gemini Action Footer */}
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[10px] text-slate-400">
+                            <div className="flex items-center gap-2">
+                              {msg.sources && msg.sources.length > 0 ? (
+                                <span className="font-mono text-[9px] px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400 flex items-center gap-1">
+                                  <span>✦</span> Sources: {msg.sources.join(', ')}
+                                </span>
+                              ) : (
+                                <span className="font-mono text-[9px] text-slate-500">
+                                  ✦ Verified Ledger Engine
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleCopyMessage(msg.text, msg.id)}
+                                className="px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition flex items-center gap-1 cursor-pointer"
+                                title="Copy response text"
+                              >
+                                {copiedMsgId === msg.id ? (
+                                  <>
+                                    <Check size={11} className="text-emerald-400" />
+                                    <span className="text-emerald-400 text-[10px]">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={11} />
+                                    <span className="text-[10px]">Copy</span>
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => setFeedbackGiven(prev => ({ ...prev, [msg.id]: 'up' }))}
+                                className={`p-1 rounded hover:bg-slate-800 transition cursor-pointer ${
+                                  feedbackGiven[msg.id] === 'up' ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'
+                                }`}
+                                title="Helpful response"
+                              >
+                                <ThumbsUp size={11} />
+                              </button>
+                              <button
+                                onClick={() => setFeedbackGiven(prev => ({ ...prev, [msg.id]: 'down' }))}
+                                className={`p-1 rounded hover:bg-slate-800 transition cursor-pointer ${
+                                  feedbackGiven[msg.id] === 'down' ? 'text-rose-400' : 'text-slate-500 hover:text-slate-300'
+                                }`}
+                                title="Improve response"
+                              >
+                                <ThumbsDown size={11} />
+                              </button>
+                            </div>
                           </div>
-                          <p className="text-[11px] text-slate-300">
-                            {msg.confirmationCard.details}
-                          </p>
                         </div>
-                      )}
-
-                      {/* Source attribution footer */}
-                      {msg.sources && msg.sources.length > 0 && (
-                        <div className="text-[9px] text-slate-500 pt-1 border-t border-slate-800 font-mono">
-                          Sources: {msg.sources.join(', ')}
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ))}
 
@@ -766,8 +838,8 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
                 )}
               </div>
 
-              {/* Chat Input Bar */}
-              <div className="p-3 bg-[#131d33] border-t border-slate-800 flex-shrink-0">
+              {/* Chat Input Bar (Gemini Floating Style) */}
+              <div className="p-3 bg-[#0d1424] border-t border-slate-800 flex-shrink-0">
                 <form
                   onSubmit={e => {
                     e.preventDefault();
@@ -775,7 +847,7 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
                   }}
                   className="space-y-2"
                 >
-                  <div className="relative flex items-center">
+                  <div className="relative rounded-2xl bg-[#12192b] border border-slate-700/80 focus-within:border-blue-500/80 focus-within:ring-2 focus-within:ring-blue-500/20 p-2.5 transition-all shadow-md">
                     <textarea
                       ref={inputRef}
                       value={inputValue}
@@ -788,19 +860,31 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
                       }}
                       placeholder={`Ask Copilot regarding ${getModuleName(activeTab)}...`}
                       rows={2}
-                      className="w-full pl-3 pr-10 py-2 rounded-xl bg-[#0b1120] border border-slate-700/80 text-white placeholder-slate-500 text-xs resize-none focus:outline-hidden focus:border-blue-500 transition"
+                      className="w-full bg-transparent text-slate-100 placeholder-slate-400 text-xs resize-none outline-hidden focus:ring-0 pr-10"
                     />
-                    <button
-                      type="submit"
-                      disabled={!inputValue.trim() || isThinking}
-                      className="absolute right-2.5 top-2.5 p-1.5 rounded-lg bg-[#2563eb] hover:bg-blue-600 disabled:opacity-40 disabled:hover:bg-[#2563eb] text-white transition cursor-pointer"
-                    >
-                      <Send size={14} />
-                    </button>
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/60 mt-1">
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                        <GeminiMiniSparkle size={11} />
+                        <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent font-semibold">
+                          Gemini Autonomous Mesh
+                        </span>
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={!inputValue.trim() || isThinking}
+                        className="p-2 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 text-white transition-all transform hover:scale-105 active:scale-95 cursor-pointer shadow-md flex items-center justify-center"
+                        title="Send message"
+                      >
+                        <Send size={13} />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
                     <span>Press Enter to send • Shift+Enter for newline</span>
-                    <span className="font-mono text-emerald-400">12 Live Tools</span>
+                    <span className="font-mono text-emerald-400 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      12 Live Tools
+                    </span>
                   </div>
                 </form>
               </div>

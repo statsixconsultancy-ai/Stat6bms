@@ -65,3 +65,23 @@ class VendorBill(TenantModel):
     status = Column(String(50), default="Pending_Match", index=True)  # Pending_Match, Matched_Approved, Mismatch
 
     purchase_order = relationship("PurchaseOrder", back_populates="bills")
+
+class PurchaseRequisition(TenantModel):
+    __tablename__ = "proc_purchase_requisitions"
+
+    pr_number = Column(String(50), nullable=False, unique=True, index=True)
+    department = Column(String(100), nullable=False, index=True)
+    requested_by = Column(String(255), nullable=False)
+    estimated_budget = Column(Float, nullable=False)
+    status = Column(String(50), default="Pending_Approval", index=True)  # Pending_Approval, Approved, Converted_To_PO
+    notes = Column(Text, nullable=True)
+
+class RFQ(TenantModel):
+    __tablename__ = "proc_rfqs"
+
+    rfq_number = Column(String(50), nullable=False, unique=True, index=True)
+    title = Column(String(255), nullable=False)
+    deadline = Column(String(50), nullable=False)
+    status = Column(String(50), default="Open", index=True)  # Open, Closed, Awarded
+    vendor_bids = Column(Text, default="[]")  # JSON string of bids
+

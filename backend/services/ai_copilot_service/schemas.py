@@ -52,7 +52,9 @@ class PageContext(BaseModel):
 
 
 class ChatbotRequest(BaseModel):
-    message: str
+    message: Optional[str] = None
+    prompt: Optional[str] = None
+    query: Optional[str] = None
     conversation_id: Optional[str] = None
     history: Optional[List[ChatMessage]] = []
     page_context: Optional[PageContext] = None
@@ -81,6 +83,7 @@ class ConfirmationCard(BaseModel):
 
 class ChatbotResponse(BaseModel):
     reply: str
+    answer: Optional[str] = None
     intent: str
     immediate_data: Dict[str, Any] = {}
     scheduled_task: Optional[ScheduledTaskSummary] = None

@@ -97,3 +97,56 @@ class ThreeWayMatchResponse(BaseModel):
     billed_amount: float
     is_verified: bool
     audit_notes: str
+
+# --- Purchase Requisition Schemas ---
+class RequisitionCreate(BaseModel):
+    department: str
+    requested_by: str
+    estimated_budget: float
+    notes: Optional[str] = None
+
+class RequisitionResponse(BaseModel):
+    id: str
+    org_id: str
+    pr_number: str
+    department: str
+    requested_by: str
+    estimated_budget: float
+    status: str
+    notes: Optional[str] = None
+
+# --- RFQ (Request for Quotation) Schemas ---
+class RFQCreate(BaseModel):
+    title: str
+    deadline: str
+
+class RFQBidSubmitRequest(BaseModel):
+    vendor_id: str
+    vendor_name: str
+    bid_amount: float
+    delivery_lead_days: int
+    notes: Optional[str] = None
+
+class RFQResponse(BaseModel):
+    id: str
+    org_id: str
+    rfq_number: str
+    title: str
+    deadline: str
+    status: str
+    vendor_bids: str
+
+class RFQAwardRequest(BaseModel):
+    winning_vendor_id: str
+
+# --- Vendor Scorecard Schemas ---
+class VendorScorecardResponse(BaseModel):
+    vendor_id: str
+    vendor_name: str
+    rating: float
+    total_pos_issued: int
+    matched_pos_count: int
+    fulfillment_compliance_rate_percent: float
+    average_lead_time_days: int
+    tier_classification: str
+

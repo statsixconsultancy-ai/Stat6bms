@@ -18,11 +18,12 @@ from common.security import get_user_context, UserContext
 from common.middleware import setup_microservice_middleware
 from common.event_bus import event_bus
 
-from services.support_service.models import Ticket, TicketMessage
+from services.support_service.models import Ticket, TicketMessage, KnowledgeBaseArticle
 from services.support_service.schemas import (
     TicketCreate, TicketStatusUpdate, TicketResponse, TicketDetailResponse,
     TicketMessageCreate, TicketMessageResponse,
-    SLAAnalyticsResponse
+    SLAAnalyticsResponse, TicketFeedbackRequest, Customer360ContextResponse,
+    KBArticleCreate, KBArticleResponse
 )
 from services.support_service.seed import seed_support_data
 
@@ -105,8 +106,7 @@ async def create_ticket(
     user_ctx: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
-    seq = db.query(Ticket).filter_by(org_id=user_ctx.org_id).count() + 1
-    tkt_num = f"TKT-2026-{seq:03d}"
+    tkt_num = f"TKT-2026-{uuid.uuid4().hex[:6].upper()}"
 
     sla_target = 2.0 if req.priority == "Urgent" else (4.0 if req.priority == "High" else 8.0)
 
@@ -230,3 +230,133 @@ async def escalate_ticket(id: str, user_ctx: UserContext = Depends(get_user_cont
     }, org_id=user_ctx.org_id)
 
     return TicketResponse(**ticket.to_dict())
+
+# ----------------------------------------------------
+# 4. CSAT / NPS Ticket Feedback Ratings
+# ----------------------------------------------------
+@app.post("/support/tickets/{id}/feedback", response_model=TicketResponse)
+def submit_ticket_feedback(
+    id: str,
+    req: TicketFeedbackRequest,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    ticket = db.query(Ticket).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    ticket.csat_score = max(1, min(5, req.csat_score))
+    if req.nps_score is not None:
+        ticket.nps_score = max(0, min(10, req.nps_score))
+    if req.feedback_comment:
+        ticket.feedback_comment = req.feedback_comment
+    
+    db.commit()
+    db.refresh(ticket)
+    return TicketResponse(**ticket.to_dict())
+
+# ----------------------------------------------------
+# 5. Customer 360 Context & Incident Timeline
+# ----------------------------------------------------
+@app.get("/support/tickets/{id}/context", response_model=Customer360ContextResponse)
+def get_customer_360_context(
+    id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    ticket = db.query(Ticket).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    # Query all tickets belonging to this customer email
+    cust_tickets = db.query(Ticket).filter_by(
+        org_id=user_ctx.org_id,
+        customer_email=ticket.customer_email
+    ).order_by(Ticket.created_at.desc()).all()
+
+    total = len(cust_tickets)
+    open_cnt = sum(1 for t in cust_tickets if t.status in ["Open", "In Progress"])
+    resolved_cnt = sum(1 for t in cust_tickets if t.status in ["Resolved", "Closed"])
+    
+    csat_scores = [t.csat_score for t in cust_tickets if t.csat_score is not None]
+    avg_csat = round(sum(csat_scores) / len(csat_scores), 1) if csat_scores else 5.0
+
+    return Customer360ContextResponse(
+        customer_email=ticket.customer_email,
+        customer_name=ticket.customer_name,
+        total_tickets=total,
+        open_tickets=open_cnt,
+        resolved_tickets=resolved_cnt,
+        average_csat=avg_csat,
+        recent_tickets=[TicketResponse(**t.to_dict()) for t in cust_tickets[:5]],
+        associated_crm_context={
+            "customer_tier": "Enterprise Tier 1",
+            "sla_tier": ticket.sla_policy,
+            "account_health": "Healthy",
+            "active_deal_count": 2,
+            "total_contract_value": 150000.00
+        }
+    )
+
+# ----------------------------------------------------
+# 6. Knowledge Base & FAQ Center
+# ----------------------------------------------------
+@app.get("/support/kb/articles", response_model=List[KBArticleResponse])
+def list_kb_articles(
+    category: Optional[str] = None,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    query = db.query(KnowledgeBaseArticle).filter_by(org_id=user_ctx.org_id, is_published=True)
+    if category:
+        query = query.filter_by(category=category)
+    articles = query.order_by(KnowledgeBaseArticle.helpful_votes.desc()).all()
+    return [KBArticleResponse(**a.to_dict()) for a in articles]
+
+@app.post("/support/kb/articles", response_model=KBArticleResponse)
+def create_kb_article(
+    req: KBArticleCreate,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    article = KnowledgeBaseArticle(
+        id=str(uuid.uuid4()),
+        org_id=user_ctx.org_id,
+        title=req.title,
+        category=req.category or "General",
+        content=req.content,
+        is_published=req.is_published if req.is_published is not None else True,
+        view_count=0,
+        helpful_votes=0
+    )
+    db.add(article)
+    db.commit()
+    db.refresh(article)
+    return KBArticleResponse(**article.to_dict())
+
+@app.get("/support/kb/articles/{id}", response_model=KBArticleResponse)
+def get_kb_article(
+    id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    article = db.query(KnowledgeBaseArticle).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Knowledge base article not found")
+    article.view_count += 1
+    db.commit()
+    return KBArticleResponse(**article.to_dict())
+
+@app.post("/support/kb/articles/{id}/vote", response_model=KBArticleResponse)
+def vote_kb_article(
+    id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    article = db.query(KnowledgeBaseArticle).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Knowledge base article not found")
+    article.helpful_votes += 1
+    db.commit()
+    return KBArticleResponse(**article.to_dict())
+

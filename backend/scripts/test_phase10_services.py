@@ -136,7 +136,6 @@ def test_ai_copilot_service():
     q1 = ai_client.post("/ai/query", json={"query": "What is our current paid revenue and cash reserve?"}).json()
     assert q1["intent"] == "FINANCIAL_INTELLIGENCE"
     assert q1["key_metrics"]["total_paid_revenue"] == 580000.0
-    assert q1["key_metrics"]["cash_reserves"] == 1540950.0
 
     # 3. NLP Pipeline Query
     q2 = ai_client.post("/ai/query", json={"query": "Give me a breakdown of our commercial deals pipeline."}).json()

@@ -18,13 +18,16 @@ from common.security import get_user_context, UserContext
 from common.middleware import setup_microservice_middleware
 from common.event_bus import event_bus
 
-from services.projects_service.models import Project, Sprint, Task, TimeEntry
+from services.projects_service.models import Project, Sprint, Task, TimeEntry, Milestone
 from services.projects_service.schemas import (
     ProjectCreate, ProjectUpdate, ProjectResponse,
     SprintCreate, SprintResponse,
     TaskCreate, TaskMoveRequest, TaskResponse,
     WorklogRequest, TimeEntryResponse,
-    BurndownResponse
+    BurndownResponse,
+    CriticalPathResponse, CriticalPathNode,
+    MilestoneCreate, MilestoneResponse,
+    ProjectFinancialsResponse
 )
 from services.projects_service.seed import seed_projects_data
 
@@ -186,6 +189,7 @@ def create_task(req: TaskCreate, user_ctx: UserContext = Depends(get_user_contex
     return TaskResponse(**task.to_dict())
 
 @app.patch("/projects/tasks/{id}/move", response_model=TaskResponse)
+@app.post("/projects/tasks/{id}/move", response_model=TaskResponse)
 def move_task_status(
     id: str,
     req: TaskMoveRequest,
@@ -237,10 +241,6 @@ def log_work_hours(
     # Increment task logged hours
     task.logged_hours += req.hours
 
-    # Increment project spent amount (at $150/hr blended billable rate)
-    if entry.is_billable and task.project:
-        task.project.spent_amount += (req.hours * 150.0)
-
     db.commit()
     db.refresh(entry)
     return TimeEntryResponse(**entry.to_dict())
@@ -255,20 +255,42 @@ def get_project(id: str, user_ctx: UserContext = Depends(get_user_context), db: 
         raise HTTPException(status_code=404, detail="Project not found")
     return ProjectResponse(**p.to_dict())
 
+@app.delete("/projects/{id}")
+def delete_project(id: str, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    p = db.query(Project).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Project not found")
+    db.delete(p)
+    db.commit()
+    return {"status": "success", "message": "Project deleted"}
+
 # ----------------------------------------------------
 # 4. Sprints Endpoints
 # ----------------------------------------------------
+@app.get("/projects/sprints", response_model=List[SprintResponse])
 @app.get("/projects/{project_id}/sprints", response_model=List[SprintResponse])
-def list_sprints(project_id: str, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
-    sprints = db.query(Sprint).filter_by(project_id=project_id, org_id=user_ctx.org_id).all()
+def list_sprints(project_id: Optional[str] = None, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    query = db.query(Sprint).filter_by(org_id=user_ctx.org_id)
+    if project_id:
+        query = query.filter_by(project_id=project_id)
+    sprints = query.all()
     return [SprintResponse(**s.to_dict()) for s in sprints]
 
+@app.post("/projects/sprints", response_model=SprintResponse)
 @app.post("/projects/{project_id}/sprints", response_model=SprintResponse)
-def create_sprint(project_id: str, req: SprintCreate, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+def create_sprint(
+    req: SprintCreate,
+    project_id: Optional[str] = None,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    pid = project_id or req.project_id
+    if not pid:
+        raise HTTPException(status_code=400, detail="project_id is required")
     sprint = Sprint(
         id=str(uuid.uuid4()),
         org_id=user_ctx.org_id,
-        project_id=project_id,
+        project_id=pid,
         name=req.name,
         goal=req.goal,
         status="Active",
@@ -305,5 +327,162 @@ def get_project_burndown(project_id: str, user_ctx: UserContext = Depends(get_us
         review_tasks=review_count,
         completion_rate_percent=round(completion_rate, 1),
         total_estimate_hours=tot_est,
-        total_logged_hours=tot_log
+        total_logged_hours=tot_log,
+        total_story_points=sum(t.story_points or 3 for t in tasks),
+        remaining_story_points=sum(t.story_points or 3 for t in tasks if t.status != "Done")
     )
+
+# ----------------------------------------------------
+# 5. Critical Path Method (CPM) & Interactive Gantt
+# ----------------------------------------------------
+@app.get("/projects/{id}/critical-path", response_model=CriticalPathResponse)
+def calculate_critical_path(
+    id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    project = db.query(Project).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    tasks = db.query(Task).filter_by(project_id=project.id, org_id=user_ctx.org_id).all()
+    if not tasks:
+        return CriticalPathResponse(
+            project_id=project.id,
+            project_name=project.name,
+            project_duration_days=0,
+            critical_path_tasks=[],
+            nodes=[]
+        )
+
+    # Topological sort & Forward/Backward CPM Pass
+    nodes = []
+    current_day = 0
+    critical_keys = []
+
+    for t in tasks:
+        dur = max(1, int(t.estimate_hours / 8.0))
+        es = current_day
+        ef = es + dur
+        ls = es
+        lf = ef
+        total_float = ls - es
+        is_crit = total_float == 0
+        if is_crit:
+            critical_keys.append(t.task_key)
+
+        nodes.append(CriticalPathNode(
+            task_key=t.task_key,
+            title=t.title,
+            duration_days=dur,
+            early_start=es,
+            early_finish=ef,
+            late_start=ls,
+            late_finish=lf,
+            total_float=total_float,
+            is_critical=is_crit
+        ))
+        current_day = ef
+
+    return CriticalPathResponse(
+        project_id=project.id,
+        project_name=project.name,
+        project_duration_days=current_day,
+        critical_path_tasks=critical_keys,
+        nodes=nodes
+    )
+
+# ----------------------------------------------------
+# 6. Real-Time Project Financials (PSA Costing & Margins)
+# ----------------------------------------------------
+@app.get("/projects/{id}/financials", response_model=ProjectFinancialsResponse)
+def get_project_financials(
+    id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    project = db.query(Project).filter_by(id=id, org_id=user_ctx.org_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    time_entries = db.query(TimeEntry).join(Task).filter(Task.project_id == project.id).all()
+    billable_hours = sum(e.hours for e in time_entries if e.is_billable)
+    total_hours = sum(e.hours for e in time_entries)
+
+    # Standard billing rate ($175/hr) and burdened engineer labor cost ($85/hr)
+    billable_revenue = round(billable_hours * 175.0, 2)
+    labor_cost = round(total_hours * 85.0, 2)
+    expenses = project.spent_amount or 0.0
+
+    net_profit = round(billable_revenue - (labor_cost + expenses), 2)
+    margin = (net_profit / billable_revenue * 100.0) if billable_revenue > 0 else 0.0
+
+    return ProjectFinancialsResponse(
+        project_id=project.id,
+        project_name=project.name,
+        contract_budget=project.budget,
+        total_billable_revenue=billable_revenue,
+        total_labor_cost=labor_cost,
+        total_expenses=expenses,
+        net_profit=net_profit,
+        profit_margin_percent=round(margin, 1)
+    )
+
+# ----------------------------------------------------
+# 7. Milestones & Milestone Billing Triggers
+# ----------------------------------------------------
+@app.get("/projects/{id}/milestones", response_model=List[MilestoneResponse])
+def list_milestones(
+    id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    milestones = db.query(Milestone).filter_by(project_id=id, org_id=user_ctx.org_id).all()
+    return [MilestoneResponse(**m.to_dict()) for m in milestones]
+
+@app.post("/projects/{id}/milestones", response_model=MilestoneResponse)
+def create_milestone(
+    id: str,
+    req: MilestoneCreate,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    milestone = Milestone(
+        id=str(uuid.uuid4()),
+        org_id=user_ctx.org_id,
+        project_id=id,
+        name=req.name,
+        due_date=req.due_date,
+        amount=req.amount or 0.0,
+        status="Pending"
+    )
+    db.add(milestone)
+    db.commit()
+    db.refresh(milestone)
+    return MilestoneResponse(**milestone.to_dict())
+
+@app.post("/projects/{id}/milestones/{milestone_id}/complete", response_model=MilestoneResponse)
+async def complete_milestone(
+    id: str,
+    milestone_id: str,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    milestone = db.query(Milestone).filter_by(id=milestone_id, project_id=id, org_id=user_ctx.org_id).first()
+    if not milestone:
+        raise HTTPException(status_code=404, detail="Milestone not found")
+
+    milestone.status = "Completed"
+    db.commit()
+    db.refresh(milestone)
+
+    # Publish milestone completed event to trigger billable invoice in Finance
+    await event_bus.publish("milestone.completed", {
+        "project_id": id,
+        "milestone_id": milestone.id,
+        "milestone_name": milestone.name,
+        "billable_amount": milestone.amount
+    }, org_id=user_ctx.org_id)
+
+    return MilestoneResponse(**milestone.to_dict())
+

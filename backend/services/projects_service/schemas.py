@@ -81,6 +81,9 @@ class TaskResponse(BaseModel):
     estimate_hours: float
     logged_hours: float
     assignee: str
+    dependencies: Optional[str] = "[]"
+    is_critical_path: Optional[bool] = False
+    story_points: Optional[int] = 3
 
 # --- Worklog / TimeEntry Schemas ---
 class WorklogRequest(BaseModel):
@@ -111,3 +114,51 @@ class BurndownResponse(BaseModel):
     completion_rate_percent: float
     total_estimate_hours: float
     total_logged_hours: float
+    total_story_points: int = 0
+    remaining_story_points: int = 0
+
+# --- Gantt & Critical Path Method (CPM) ---
+class CriticalPathNode(BaseModel):
+    task_key: str
+    title: str
+    duration_days: int
+    early_start: int
+    early_finish: int
+    late_start: int
+    late_finish: int
+    total_float: int
+    is_critical: bool
+
+class CriticalPathResponse(BaseModel):
+    project_id: str
+    project_name: str
+    project_duration_days: int
+    critical_path_tasks: List[str]
+    nodes: List[CriticalPathNode]
+
+# --- Milestone Schemas ---
+class MilestoneCreate(BaseModel):
+    name: str
+    due_date: str
+    amount: Optional[float] = 0.0
+
+class MilestoneResponse(BaseModel):
+    id: str
+    org_id: str
+    project_id: str
+    name: str
+    due_date: str
+    amount: float
+    status: str
+
+# --- Project Financials (PSA Real-Time Costing) ---
+class ProjectFinancialsResponse(BaseModel):
+    project_id: str
+    project_name: str
+    contract_budget: float
+    total_billable_revenue: float
+    total_labor_cost: float
+    total_expenses: float
+    net_profit: float
+    profit_margin_percent: float
+

@@ -48,6 +48,15 @@ class Task(TenantModel):
     estimate_hours = Column(Float, default=8.0)
     logged_hours = Column(Float, default=0.0)
     assignee = Column(String(255), default="Engineer")
+    dependencies = Column(Text, default="[]")  # List of prerequisite task keys
+    dependency_type = Column(String(10), default="FS")  # FS, SS, FF, SF
+    is_critical_path = Column(Boolean, default=False)
+    early_start_day = Column(Integer, default=0)
+    early_finish_day = Column(Integer, default=0)
+    late_start_day = Column(Integer, default=0)
+    late_finish_day = Column(Integer, default=0)
+    total_float = Column(Integer, default=0)
+    story_points = Column(Integer, default=3)
 
     project = relationship("Project", back_populates="tasks")
     sprint = relationship("Sprint", back_populates="tasks")
@@ -65,3 +74,13 @@ class TimeEntry(TenantModel):
     is_billable = Column(Boolean, default=True)
 
     task = relationship("Task", back_populates="time_entries")
+
+class Milestone(TenantModel):
+    __tablename__ = "prj_milestones"
+
+    project_id = Column(String(36), ForeignKey("prj_projects.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    due_date = Column(String(50), nullable=False)
+    amount = Column(Float, default=0.0)
+    status = Column(String(50), default="Pending", index=True)  # Pending, Completed, Billed
+

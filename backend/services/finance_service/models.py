@@ -78,3 +78,19 @@ class JournalLine(TenantModel):
     credit = Column(Float, default=0.0)
 
     journal_entry = relationship("JournalEntry", back_populates="lines")
+
+class Subscription(TenantModel):
+    __tablename__ = "fin_subscriptions"
+
+    customer_name = Column(String(255), nullable=False, index=True)
+    customer_email = Column(String(255), nullable=False, index=True)
+    plan_name = Column(String(100), default="Enterprise Tier", index=True)
+    billing_interval = Column(String(50), default="monthly")  # monthly, yearly
+    unit_price = Column(Float, nullable=False)
+    quantity = Column(Integer, default=1)
+    total_recurring_amount = Column(Float, default=0.0)
+    next_billing_date = Column(String(50), nullable=False)
+    status = Column(String(50), default="Active", index=True)  # Active, Past_Due, Cancelled
+    payment_method = Column(String(50), default="Credit Card")
+    auto_renew = Column(Boolean, default=True)
+

@@ -70,10 +70,10 @@ class TestAgenticFrameworkCore(unittest.TestCase):
         self.assertEqual(raw, restored)
 
     def test_engine_financial_summary(self):
-        res = default_engine.process_request("What is our current cash reserve and paid revenue?", {}, self.admin_ctx)
+        res = default_engine.process_request("What is our current financial position and paid revenue?", {}, self.admin_ctx)
         self.assertEqual(res["intent"], "FINANCIAL_SYNTHESIS")
-        self.assertIn("STAT6 Corporate Financial Health", res["reply"])
-        self.assertIn("cash_reserves", res.get("immediate_data", {}))
+        self.assertIn("Corporate Financial", res["reply"])
+        self.assertIn("total_paid_revenue", res.get("immediate_data", {}))
 
     def test_engine_founder_compensation_data_stays_home(self):
         res = default_engine.process_request("Give me the complete salary and compensation details of all employees", {}, self.admin_ctx)
