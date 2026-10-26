@@ -19,7 +19,10 @@ import {
   Layers,
   ArrowUpRight,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Minus,
+  Move,
+  GripVertical
 } from 'lucide-react';
 import { GeminiMarkdownRenderer } from './GeminiMarkdownRenderer';
 import { GeminiSparkleIcon, GeminiMiniSparkle } from './GeminiIcons';
@@ -117,6 +120,197 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
   const [activeTabInside, setActiveTabInside] = useState<'chat' | 'context'>('chat');
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // --- APPLE UI FLOATING & DRAGGING STATE ---
+  const getDefaultFloatPos = () => {
+    if (typeof window === 'undefined') return { x: 900, y: 650 };
+    return {
+      x: Math.max(16, window.innerWidth - 240),
+      y: Math.max(16, window.innerHeight - 84)
+    };
+  };
+
+  const [floatPos, setFloatPos] = useState<{ x: number; y: number }>(() => {
+    try {
+      const saved = localStorage.getItem('stat6_copilot_float_pos');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          return parsed;
+        }
+      }
+    } catch {}
+    return getDefaultFloatPos();
+  });
+
+  // Display mode: 'pill' (Apple Dynamic Capsule) | 'orb' (Apple AssistiveTouch Squircle)
+  const [orbMode, setOrbMode] = useState<'pill' | 'orb'>(() => {
+    try {
+      const saved = localStorage.getItem('stat6_copilot_orb_mode');
+      if (saved === 'orb' || saved === 'pill') return saved;
+    } catch {}
+    return 'pill';
+  });
+
+  // Dragging states for floating launcher
+  const isDraggingRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const elementStartPos = useRef({ x: 0, y: 0 });
+  const hasMovedRef = useRef(false);
+
+  // Position and dragging states for Chat Window
+  const [dockPos, setDockPos] = useState<{ x: number; y: number } | null>(null);
+  const isWindowDraggingRef = useRef(false);
+  const [isWindowDragging, setIsWindowDragging] = useState(false);
+  const windowDragStartPos = useRef({ x: 0, y: 0 });
+  const windowElementStartPos = useRef({ x: 0, y: 0 });
+
+  // Viewport clamp utility
+  const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
+
+  const clampPosition = (x: number, y: number, width: number, height: number) => {
+    if (typeof window === 'undefined') return { x, y };
+    const pad = 12;
+    const maxX = Math.max(pad, window.innerWidth - width - pad);
+    const maxY = Math.max(pad, window.innerHeight - height - pad);
+    return {
+      x: clamp(x, pad, maxX),
+      y: clamp(y, pad, maxY)
+    };
+  };
+
+  // Handle window resizing to keep floating icon and window inside viewport
+  useEffect(() => {
+    const handleResize = () => {
+      const w = orbMode === 'orb' ? 56 : 220;
+      const h = 54;
+      setFloatPos(prev => clampPosition(prev.x, prev.y, w, h));
+
+      if (dockPos) {
+        const winW = isExpanded ? Math.min(720, window.innerWidth - 24) : Math.min(460, window.innerWidth - 24);
+        const winH = isExpanded ? Math.min(820, window.innerHeight - 24) : Math.min(600, window.innerHeight - 24);
+        setDockPos(prev => prev ? clampPosition(prev.x, prev.y, winW, winH) : null);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [orbMode, isExpanded, dockPos]);
+
+  // When opening, compute initial window position if not already customized
+  useEffect(() => {
+    if (isOpen && dockPos === null) {
+      const winW = isExpanded ? Math.min(720, window.innerWidth - 24) : Math.min(460, window.innerWidth - 24);
+      const winH = isExpanded ? Math.min(820, window.innerHeight - 24) : Math.min(600, window.innerHeight - 24);
+
+      const launcherW = orbMode === 'orb' ? 56 : 220;
+      let targetX = floatPos.x > window.innerWidth / 2 
+        ? floatPos.x + launcherW - winW 
+        : floatPos.x;
+      let targetY = floatPos.y > window.innerHeight / 2 
+        ? floatPos.y - winH - 12 
+        : floatPos.y + 60;
+
+      setDockPos(clampPosition(targetX, targetY, winW, winH));
+    }
+  }, [isOpen, isExpanded, orbMode, floatPos]);
+
+  const handleLauncherPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('.no-drag')) return;
+    if (e.button !== 0) return;
+
+    isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+    elementStartPos.current = { ...floatPos };
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+    setIsDragging(true);
+  };
+
+  const handleLauncherPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    const dx = e.clientX - dragStartPos.current.x;
+    const dy = e.clientY - dragStartPos.current.y;
+
+    if (Math.hypot(dx, dy) > 4) {
+      hasMovedRef.current = true;
+    }
+
+    const w = orbMode === 'orb' ? 56 : 220;
+    const h = 54;
+    const newPos = clampPosition(elementStartPos.current.x + dx, elementStartPos.current.y + dy, w, h);
+    setFloatPos(newPos);
+  };
+
+  const handleLauncherPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    setIsDragging(false);
+
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
+
+    if (!hasMovedRef.current) {
+      // Clean tap/click without drag -> toggle open/close
+      setIsOpen(prev => !prev);
+    } else {
+      // Drag completed -> persist position
+      try {
+        localStorage.setItem('stat6_copilot_float_pos', JSON.stringify(floatPos));
+      } catch {}
+    }
+  };
+
+  const toggleOrbMode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextMode = orbMode === 'pill' ? 'orb' : 'pill';
+    setOrbMode(nextMode);
+    try {
+      localStorage.setItem('stat6_copilot_orb_mode', nextMode);
+    } catch {}
+    const w = nextMode === 'orb' ? 56 : 220;
+    setFloatPos(prev => clampPosition(prev.x, prev.y, w, 54));
+  };
+
+  const handleWindowPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('.no-drag, button, input, textarea, a')) return;
+    if (e.button !== 0) return;
+
+    isWindowDraggingRef.current = true;
+    windowDragStartPos.current = { x: e.clientX, y: e.clientY };
+    windowElementStartPos.current = dockPos || { ...floatPos };
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+    setIsWindowDragging(true);
+  };
+
+  const handleWindowPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isWindowDraggingRef.current) return;
+    const dx = e.clientX - windowDragStartPos.current.x;
+    const dy = e.clientY - windowDragStartPos.current.y;
+
+    const winW = isExpanded ? Math.min(720, window.innerWidth - 24) : Math.min(460, window.innerWidth - 24);
+    const winH = isExpanded ? Math.min(820, window.innerHeight - 24) : Math.min(600, window.innerHeight - 24);
+
+    const newX = windowElementStartPos.current.x + dx;
+    const newY = windowElementStartPos.current.y + dy;
+    setDockPos(clampPosition(newX, newY, winW, winH));
+  };
+
+  const handleWindowPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isWindowDraggingRef.current) return;
+    isWindowDraggingRef.current = false;
+    setIsWindowDragging(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
+  };
 
   const handleCopyMessage = (text: string, msgId: string) => {
     navigator.clipboard.writeText(text);
@@ -398,97 +592,201 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
   return (
     <>
       {/* ---------------------------------------------------- */}
-      {/* 1. FLOATING OMNI-COPILOT LAUNCHER BUTTON            */}
+      {/* 1. FLOATING APPLE DRAGGABLE COPILOT LAUNCHER        */}
       {/* ---------------------------------------------------- */}
-      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 select-none">
-        {!isOpen && (
-          <button
-            onClick={() => setIsOpen(true)}
-            className="group relative flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-[#1e3a8a] via-[#1d4ed8] to-[#2563eb] hover:from-[#1d4ed8] hover:to-[#3b82f6] text-white rounded-full shadow-2xl border border-blue-400/30 transition-all duration-200 transform hover:scale-105 active:scale-95 cursor-pointer"
-            title="Open STAT6 Omnipresent Copilot (Ctrl + /)"
-          >
-            <div className="relative flex items-center justify-center">
-              <GeminiSparkleIcon size={20} className="transition-transform group-hover:rotate-12 duration-300" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/40 animate-ping"></span>
+      <div
+        style={{
+          position: 'fixed',
+          left: `${floatPos.x}px`,
+          top: `${floatPos.y}px`,
+          zIndex: 9999,
+          touchAction: 'none'
+        }}
+        onPointerDown={handleLauncherPointerDown}
+        onPointerMove={handleLauncherPointerMove}
+        onPointerUp={handleLauncherPointerUp}
+        onPointerCancel={handleLauncherPointerUp}
+        className={`group select-none transition-transform duration-150 ${
+          isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab hover:scale-[1.03]'
+        }`}
+        title="Drag anywhere across platform • Click to toggle Copilot (Ctrl+/)"
+      >
+        {/* Apple Intelligence Multi-tone Aura Glow */}
+        <div
+          className={`absolute -inset-1 rounded-full bg-gradient-to-r from-[#4285F4] via-[#9B72CF] via-[#D96570] to-[#F4B400] blur-md transition-opacity duration-300 pointer-events-none ${
+            isOpen ? 'opacity-80 ring-2 ring-blue-400/50' : 'opacity-40 group-hover:opacity-85 animate-pulse'
+          }`}
+        />
+
+        {orbMode === 'pill' ? (
+          /* Apple Intelligence Dynamic Capsule Pill */
+          <div className="relative flex items-center gap-2 pl-2.5 pr-2.5 py-2 rounded-full bg-black/85 dark:bg-[#070b14]/90 backdrop-blur-2xl border border-white/20 text-white shadow-[0_12px_40px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.4)]">
+            {/* Apple Tactile Drag Grip */}
+            <div className="flex flex-col gap-0.5 px-0.5 text-white/40 group-hover:text-white/80 transition-colors pointer-events-none">
+              <div className="flex gap-0.5">
+                <span className="w-1 h-1 rounded-full bg-current" />
+                <span className="w-1 h-1 rounded-full bg-current" />
+              </div>
+              <div className="flex gap-0.5">
+                <span className="w-1 h-1 rounded-full bg-current" />
+                <span className="w-1 h-1 rounded-full bg-current" />
+              </div>
+              <div className="flex gap-0.5">
+                <span className="w-1 h-1 rounded-full bg-current" />
+                <span className="w-1 h-1 rounded-full bg-current" />
+              </div>
             </div>
-            <div className="flex flex-col text-left">
-              <span className="text-xs font-bold tracking-wide flex items-center gap-1.5">
-                STAT6 Copilot
-                <span className="px-1.5 py-0.2 text-[9px] font-sans font-semibold bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-200 rounded-full border border-blue-400/30">
-                  ✦ Gemini AI
+
+            {/* Glowing Orb Jewel */}
+            <div className="relative w-8 h-8 rounded-full bg-gradient-to-tr from-[#1e293b] via-[#1a233a] to-[#253350] border border-white/25 flex items-center justify-center flex-shrink-0 shadow-inner">
+              <GeminiSparkleIcon
+                size={18}
+                className="transition-transform group-hover:rotate-45 duration-500"
+              />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/40 animate-ping" />
+            </div>
+
+            {/* Typography & Context */}
+            <div className="flex flex-col text-left pointer-events-none">
+              <div className="flex items-center gap-1.5 leading-tight">
+                <span className="text-[11px] font-bold tracking-tight text-white">
+                  STAT6
                 </span>
-              </span>
-              <span className="text-[10px] text-blue-200/80 font-mono">
+                <span className="px-1.5 py-0.2 text-[8px] font-semibold bg-gradient-to-r from-blue-500/30 to-purple-500/30 text-blue-200 rounded-full border border-blue-400/30">
+                  ✦ Copilot
+                </span>
+              </div>
+              <span className="text-[9px] text-white/60 font-mono truncate max-w-[95px] leading-tight">
                 {getModuleName(activeTab)}
               </span>
             </div>
-            <kbd className="hidden sm:inline-block ml-1 text-[10px] px-1.5 py-0.5 rounded bg-black/30 border border-white/20 text-blue-200 font-mono">
-              Ctrl+/
-            </kbd>
-          </button>
+
+            {/* Mode Switcher to Minimalist Assistive Orb */}
+            <button
+              onClick={toggleOrbMode}
+              className="no-drag ml-0.5 p-1 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition cursor-pointer"
+              title="Switch to compact Apple Orb mode"
+            >
+              <Minus size={11} />
+            </button>
+          </div>
+        ) : (
+          /* Apple AssistiveTouch Squircle Orb Mode */
+          <div className="relative w-14 h-14 rounded-2xl bg-black/85 dark:bg-[#070b14]/90 backdrop-blur-2xl border border-white/20 text-white shadow-[0_12px_40px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.4)] flex flex-col items-center justify-center gap-1">
+            <div className="relative flex items-center justify-center">
+              <GeminiSparkleIcon
+                size={22}
+                className="transition-transform group-hover:rotate-45 duration-500"
+              />
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/40 animate-ping" />
+            </div>
+            {/* Grip dots affordance */}
+            <div className="flex items-center gap-0.5 text-white/40 group-hover:text-white/80 transition-colors">
+              <span className="w-1 h-1 rounded-full bg-current" />
+              <span className="w-1 h-1 rounded-full bg-current" />
+              <span className="w-1 h-1 rounded-full bg-current" />
+            </div>
+            {/* Expand button on hover */}
+            <button
+              onClick={toggleOrbMode}
+              className="no-drag absolute -top-1.5 -right-1.5 p-0.5 rounded-full bg-slate-800 border border-white/20 text-white/70 hover:text-white opacity-0 group-hover:opacity-100 transition cursor-pointer shadow-md"
+              title="Expand to Dynamic Pill mode"
+            >
+              <Maximize2 size={9} />
+            </button>
+          </div>
         )}
       </div>
 
       {/* ---------------------------------------------------- */}
-      {/* 2. HOVERING OMNIPRESENT COPILOT DOCK WINDOW         */}
+      {/* 2. HOVERING DRAGGABLE COPILOT WINDOW (APPLE MACOS)   */}
       {/* ---------------------------------------------------- */}
       {isOpen && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex flex-col rounded-2xl shadow-2xl border border-slate-700/80 bg-[#0f172a]/95 backdrop-blur-md text-slate-100 overflow-hidden transition-all duration-200 ${
+          style={{
+            position: 'fixed',
+            left: `${dockPos ? dockPos.x : floatPos.x}px`,
+            top: `${dockPos ? dockPos.y : floatPos.y}px`,
+            zIndex: 9998
+          }}
+          className={`flex flex-col rounded-2xl shadow-[0_24px_70px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.1)] bg-[#0f172a]/95 backdrop-blur-2xl text-slate-100 overflow-hidden transition-all duration-150 ${
             isExpanded
               ? 'w-[95vw] sm:w-[720px] h-[85vh] max-h-[820px]'
               : 'w-[92vw] sm:w-[460px] h-[600px] max-h-[82vh]'
           }`}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#11192e] border-b border-slate-750 flex-shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#1e293b] via-[#1a233a] to-[#253350] border border-blue-500/30 flex items-center justify-center text-white shadow-sm">
-                <GeminiSparkleIcon size={20} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-bold text-white tracking-wide">
-                    STAT6 Copilot
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-medium bg-gradient-to-r from-blue-950/80 via-purple-950/80 to-slate-900 text-blue-300 border border-blue-500/30 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-                    Gemini-Class Mesh
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Schema-bound execution • Privacy-first boundary
-                </p>
+          {/* Apple macOS Draggable Window Titlebar */}
+          <div
+            onPointerDown={handleWindowPointerDown}
+            onPointerMove={handleWindowPointerMove}
+            onPointerUp={handleWindowPointerUp}
+            onPointerCancel={handleWindowPointerUp}
+            className={`flex items-center justify-between px-4 py-3 bg-[#11192e]/90 backdrop-blur-md border-b border-slate-700/80 select-none flex-shrink-0 ${
+              isWindowDragging ? 'cursor-grabbing' : 'cursor-grab'
+            }`}
+            title="Drag window anywhere across the screen"
+          >
+            {/* Apple Traffic Light Controls */}
+            <div className="flex items-center gap-2 group/lights">
+              {/* Close (Red) */}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="w-3 h-3 rounded-full bg-[#ff5f56] hover:bg-[#e0443e] border border-[#e0443e] flex items-center justify-center transition cursor-pointer"
+                title="Close window (Esc)"
+              >
+                <X size={8} className="text-black/60 opacity-0 group-hover/lights:opacity-100 transition-opacity" />
+              </button>
+              {/* Minimize (Yellow) */}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#dea123] border border-[#dea123] flex items-center justify-center transition cursor-pointer"
+                title="Minimize to floating orb"
+              >
+                <Minus size={8} className="text-black/60 opacity-0 group-hover/lights:opacity-100 transition-opacity" />
+              </button>
+              {/* Expand / Maximize (Green) */}
+              <button
+                onClick={() => setIsExpanded(prev => !prev)}
+                className="w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#1aab29] border border-[#1aab29] flex items-center justify-center transition cursor-pointer"
+                title={isExpanded ? 'Shrink' : 'Expand window'}
+              >
+                {isExpanded ? (
+                  <Minimize2 size={8} className="text-black/60 opacity-0 group-hover/lights:opacity-100 transition-opacity" />
+                ) : (
+                  <Maximize2 size={8} className="text-black/60 opacity-0 group-hover/lights:opacity-100 transition-opacity" />
+                )}
+              </button>
+
+              <div className="h-4 w-[1px] bg-white/10 ml-1.5" />
+
+              <div className="flex items-center gap-2 ml-1">
+                <GeminiSparkleIcon size={16} />
+                <span className="text-xs font-bold text-white tracking-wide">
+                  STAT6 Copilot
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-medium bg-gradient-to-r from-blue-950/80 via-purple-950/80 to-slate-900 text-blue-300 border border-blue-500/30 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                  Gemini-Class Mesh
+                </span>
               </div>
             </div>
 
+            {/* Window Actions */}
             <div className="flex items-center gap-1.5 text-slate-400">
+              <span className="hidden sm:flex items-center gap-1 text-[10px] text-slate-400 mr-1 font-mono">
+                <Move size={10} className="text-slate-400" />
+                Drag window
+              </span>
               {/* Maximize to full tab */}
               <button
                 onClick={() => {
                   onNavigateTab('ai');
                   setIsOpen(false);
                 }}
-                className="p-1.5 rounded-lg hover:bg-slate-700/50 hover:text-white transition"
+                className="no-drag p-1.5 rounded-lg hover:bg-slate-700/50 hover:text-white transition cursor-pointer"
                 title="Open full AI Tab"
               >
-                <ArrowUpRight size={15} />
-              </button>
-              {/* Expand / Shrink */}
-              <button
-                onClick={() => setIsExpanded(prev => !prev)}
-                className="p-1.5 rounded-lg hover:bg-slate-700/50 hover:text-white transition"
-                title={isExpanded ? 'Shrink' : 'Expand width'}
-              >
-                {isExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-              </button>
-              {/* Close */}
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-700/50 hover:text-white transition"
-                title="Close (Esc)"
-              >
-                <X size={15} />
+                <ArrowUpRight size={14} />
               </button>
             </div>
           </div>
