@@ -34,7 +34,8 @@ import {
   AlertTriangle,
   Send,
   RefreshCw,
-  Play
+  Play,
+  Menu
 } from 'lucide-react';
 import { OmniCopilotDock, CopilotMessage } from './components/OmniCopilotDock';
 import { GeminiMarkdownRenderer } from './components/GeminiMarkdownRenderer';
@@ -145,6 +146,37 @@ export default function App() {
   const [salesExpanded, setSalesExpanded] = useState(true);
   const [operationsExpanded, setOperationsExpanded] = useState(true);
   const [adminExpanded, setAdminExpanded] = useState(true);
+
+  // Retractable Sidebar State (ChatGPT-style)
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('stat6_sidebar_open');
+      if (saved !== null) return saved === 'true';
+    } catch {}
+    return true;
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('stat6_sidebar_open', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Global Keyboard Shortcut: Ctrl+B or Cmd+B to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Jira Issue Drawer
   const [selectedIssue, setSelectedIssue] = useState<JiraIssue | null>(null);
@@ -1037,8 +1069,10 @@ export default function App() {
       {/* ---------------------------------------------------- */}
       {/* 1. DEEP NAVY ENTERPRISE SIDEBAR (MATCHING SCREENSHOT) */}
       {/* ---------------------------------------------------- */}
-      <aside className="w-60 flex-shrink-0 flex flex-col justify-between bg-[#162340] text-slate-200 select-none border-r border-slate-800">
-        <div className="flex flex-col h-full overflow-hidden">
+      <aside className={`flex flex-col justify-between bg-[#162340] text-slate-200 select-none transition-all duration-300 ease-in-out flex-shrink-0 z-30 overflow-hidden ${
+        isSidebarOpen ? 'w-60 border-r border-slate-800 opacity-100' : 'w-0 border-r-0 opacity-0 pointer-events-none'
+      }`}>
+        <div className={`w-60 flex flex-col h-full overflow-hidden transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
           
           {/* Top Brand Logo - STAT6 Title in Pure White (Matching Zoho Layout) */}
           <div className="p-3.5 flex items-center justify-between border-b border-slate-700/60">
@@ -1054,9 +1088,19 @@ export default function App() {
                 STAT6
               </span>
             </button>
-            <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-normal">
-              v2.4
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-normal">
+                v2.4
+              </span>
+              <button
+                onClick={toggleSidebar}
+                className="p-1 rounded-md hover:bg-slate-700/60 text-slate-400 hover:text-white transition cursor-pointer"
+                title="Collapse sidebar (Ctrl+B)"
+                aria-label="Collapse sidebar"
+              >
+                <Menu size={16} />
+              </button>
+            </div>
           </div>
 
           {/* Quick Header Nav Links - Vector Outline Icons Matching Screenshot */}
@@ -1356,8 +1400,22 @@ export default function App() {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         
         {/* Dynamic Top Workspace Header Bar */}
-        <header className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131c2e] px-6 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2 text-black dark:text-white">
+        <header className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131c2e] px-4 sm:px-6 flex items-center justify-between flex-shrink-0 gap-3">
+          <div className="flex items-center gap-2.5 text-black dark:text-white">
+            {/* 3-Line Hamburger Sidebar Toggle Button (ChatGPT style) */}
+            <button
+              onClick={toggleSidebar}
+              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                !isSidebarOpen
+                  ? 'bg-blue-600/15 border-blue-500/40 text-blue-600 dark:text-blue-400 hover:bg-blue-600/25 shadow-xs'
+                  : 'border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+              }`}
+              title={isSidebarOpen ? 'Collapse sidebar (Ctrl+B)' : 'Expand sidebar (Ctrl+B)'}
+              aria-label={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            >
+              <Menu size={17} />
+            </button>
+
             <span className="font-bold text-black dark:text-white tracking-tight">STAT6</span>
             <span className="text-slate-400 font-normal">/</span>
             <span className="uppercase text-xs tracking-wider text-black dark:text-white font-normal">
@@ -3118,6 +3176,7 @@ export default function App() {
       <OmniCopilotDock
         apiBase={API_BASE}
         activeTab={activeTab}
+        isSidebarOpen={isSidebarOpen}
         selectedItem={selectedIssue ? { id: selectedIssue.id, type: 'issue', title: selectedIssue.title } : null}
         messages={agentChatMessages}
         onMessagesChange={setAgentChatMessages}

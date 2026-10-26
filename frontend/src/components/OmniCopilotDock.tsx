@@ -92,6 +92,7 @@ export interface PageContextPayload {
 interface OmniCopilotDockProps {
   apiBase: string;
   activeTab: string;
+  isSidebarOpen?: boolean;
   selectedItem?: { id: string; type: string; title?: string } | null;
   messages: CopilotMessage[];
   onMessagesChange: React.Dispatch<React.SetStateAction<CopilotMessage[]>>;
@@ -103,6 +104,7 @@ interface OmniCopilotDockProps {
 export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
   apiBase,
   activeTab,
+  isSidebarOpen = true,
   selectedItem,
   messages,
   onMessagesChange,
@@ -122,10 +124,12 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   // --- APPLE UI FLOATING & DRAGGING STATE ---
+  const getMinX = () => (isSidebarOpen ? 256 : 16);
+
   const getDefaultFloatPos = () => {
     if (typeof window === 'undefined') return { x: 900, y: 650 };
     return {
-      x: Math.max(16, window.innerWidth - 240),
+      x: Math.max(getMinX(), window.innerWidth - 240),
       y: Math.max(16, window.innerHeight - 84)
     };
   };
@@ -172,13 +176,35 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
   const clampPosition = (x: number, y: number, width: number, height: number) => {
     if (typeof window === 'undefined') return { x, y };
     const pad = 12;
-    const maxX = Math.max(pad, window.innerWidth - width - pad);
+    const minX = getMinX();
+    const maxX = Math.max(minX, window.innerWidth - width - pad);
     const maxY = Math.max(pad, window.innerHeight - height - pad);
     return {
-      x: clamp(x, pad, maxX),
+      x: clamp(x, minX, maxX),
       y: clamp(y, pad, maxY)
     };
   };
+
+  // Apple AssistiveTouch Move-Aside Snap: smoothly glides to nearest side margin (left or right)
+  const snapToAsideEdge = (pos: { x: number; y: number }) => {
+    if (typeof window === 'undefined') return pos;
+    const launcherW = orbMode === 'orb' ? 56 : 220;
+    const minX = getMinX();
+    const maxX = Math.max(minX, window.innerWidth - launcherW - 16);
+    const midPoint = (minX + maxX) / 2;
+    const snappedX = pos.x < midPoint ? minX : maxX;
+    return { x: snappedX, y: clamp(pos.y, 16, window.innerHeight - 70) };
+  };
+
+  // If sidebar expands, automatically move AI icon aside so it never overlaps the sidebar!
+  useEffect(() => {
+    if (isSidebarOpen && floatPos.x < 252) {
+      setFloatPos(prev => ({
+        ...prev,
+        x: 258
+      }));
+    }
+  }, [isSidebarOpen]);
 
   // Handle window resizing to keep floating icon and window inside viewport
   useEffect(() => {
@@ -188,32 +214,43 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
       setFloatPos(prev => clampPosition(prev.x, prev.y, w, h));
 
       if (dockPos) {
-        const winW = isExpanded ? Math.min(720, window.innerWidth - 24) : Math.min(460, window.innerWidth - 24);
-        const winH = isExpanded ? Math.min(820, window.innerHeight - 24) : Math.min(600, window.innerHeight - 24);
+        const winW = isExpanded ? Math.min(760, window.innerWidth - 24) : Math.min(480, window.innerWidth - 24);
+        const winH = isExpanded ? Math.min(840, window.innerHeight - 24) : Math.min(620, window.innerHeight - 24);
         setDockPos(prev => prev ? clampPosition(prev.x, prev.y, winW, winH) : null);
       }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [orbMode, isExpanded, dockPos]);
+  }, [orbMode, isExpanded, dockPos, isSidebarOpen]);
 
-  // When opening, compute initial window position if not already customized
+  // Centered Window Calculation: puts the chat window directly in the centre of the workspace
+  const getCenteredWindowPos = (expanded: boolean) => {
+    if (typeof window === 'undefined') return { x: 400, y: 150 };
+    const winW = expanded ? Math.min(760, window.innerWidth - 32) : Math.min(480, window.innerWidth - 32);
+    const winH = expanded ? Math.min(840, window.innerHeight - 32) : Math.min(620, window.innerHeight - 32);
+    const leftOffset = isSidebarOpen ? 240 : 0;
+    const targetX = Math.round(leftOffset + Math.max(0, window.innerWidth - leftOffset - winW) / 2);
+    const targetY = Math.round(Math.max(16, (window.innerHeight - winH) / 2));
+    return { x: targetX, y: targetY };
+  };
+
+  // When the chat window opens in the centre, the AI icon automatically moves aside to the side edge!
   useEffect(() => {
-    if (isOpen && dockPos === null) {
-      const winW = isExpanded ? Math.min(720, window.innerWidth - 24) : Math.min(460, window.innerWidth - 24);
-      const winH = isExpanded ? Math.min(820, window.innerHeight - 24) : Math.min(600, window.innerHeight - 24);
+    if (isOpen) {
+      // 1. Center the chat window in the workspace
+      setDockPos(getCenteredWindowPos(isExpanded));
 
-      const launcherW = orbMode === 'orb' ? 56 : 220;
-      let targetX = floatPos.x > window.innerWidth / 2 
-        ? floatPos.x + launcherW - winW 
-        : floatPos.x;
-      let targetY = floatPos.y > window.innerHeight / 2 
-        ? floatPos.y - winH - 12 
-        : floatPos.y + 60;
-
-      setDockPos(clampPosition(targetX, targetY, winW, winH));
+      // 2. Automatically move the AI icon aside to the edge of the screen
+      setFloatPos(prev => snapToAsideEdge(prev));
     }
-  }, [isOpen, isExpanded, orbMode, floatPos]);
+  }, [isOpen, isSidebarOpen]);
+
+  // When expanding / shrinking window width with green traffic light
+  useEffect(() => {
+    if (isOpen && !isWindowDragging) {
+      setDockPos(getCenteredWindowPos(isExpanded));
+    }
+  }, [isExpanded]);
 
   const handleLauncherPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('.no-drag')) return;
@@ -258,9 +295,11 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
       // Clean tap/click without drag -> toggle open/close
       setIsOpen(prev => !prev);
     } else {
-      // Drag completed -> persist position
+      // Drag completed -> snap to nearest side edge (Apple AssistiveTouch move aside)
+      const snapped = snapToAsideEdge(floatPos);
+      setFloatPos(snapped);
       try {
-        localStorage.setItem('stat6_copilot_float_pos', JSON.stringify(floatPos));
+        localStorage.setItem('stat6_copilot_float_pos', JSON.stringify(snapped));
       } catch {}
     }
   };
@@ -273,7 +312,7 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
       localStorage.setItem('stat6_copilot_orb_mode', nextMode);
     } catch {}
     const w = nextMode === 'orb' ? 56 : 220;
-    setFloatPos(prev => clampPosition(prev.x, prev.y, w, 54));
+    setFloatPos(prev => snapToAsideEdge(clampPosition(prev.x, prev.y, w, 54)));
   };
 
   const handleWindowPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -282,7 +321,7 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
 
     isWindowDraggingRef.current = true;
     windowDragStartPos.current = { x: e.clientX, y: e.clientY };
-    windowElementStartPos.current = dockPos || { ...floatPos };
+    windowElementStartPos.current = dockPos || getCenteredWindowPos(isExpanded);
 
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -295,8 +334,8 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
     const dx = e.clientX - windowDragStartPos.current.x;
     const dy = e.clientY - windowDragStartPos.current.y;
 
-    const winW = isExpanded ? Math.min(720, window.innerWidth - 24) : Math.min(460, window.innerWidth - 24);
-    const winH = isExpanded ? Math.min(820, window.innerHeight - 24) : Math.min(600, window.innerHeight - 24);
+    const winW = isExpanded ? Math.min(760, window.innerWidth - 24) : Math.min(480, window.innerWidth - 24);
+    const winH = isExpanded ? Math.min(840, window.innerHeight - 24) : Math.min(620, window.innerHeight - 24);
 
     const newX = windowElementStartPos.current.x + dx;
     const newY = windowElementStartPos.current.y + dy;
@@ -600,13 +639,14 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
           left: `${floatPos.x}px`,
           top: `${floatPos.y}px`,
           zIndex: 9999,
-          touchAction: 'none'
+          touchAction: 'none',
+          transition: isDragging ? 'none' : 'left 0.35s cubic-bezier(0.16, 1, 0.3, 1), top 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s ease'
         }}
         onPointerDown={handleLauncherPointerDown}
         onPointerMove={handleLauncherPointerMove}
         onPointerUp={handleLauncherPointerUp}
         onPointerCancel={handleLauncherPointerUp}
-        className={`group select-none transition-transform duration-150 ${
+        className={`group select-none ${
           isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab hover:scale-[1.03]'
         }`}
         title="Drag anywhere across platform • Click to toggle Copilot (Ctrl+/)"
@@ -705,14 +745,15 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
         <div
           style={{
             position: 'fixed',
-            left: `${dockPos ? dockPos.x : floatPos.x}px`,
-            top: `${dockPos ? dockPos.y : floatPos.y}px`,
-            zIndex: 9998
+            left: `${dockPos ? dockPos.x : (isSidebarOpen ? 260 : 24)}px`,
+            top: `${dockPos ? dockPos.y : 24}px`,
+            zIndex: 9998,
+            transition: isWindowDragging ? 'none' : 'left 0.3s cubic-bezier(0.16, 1, 0.3, 1), top 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s ease, height 0.25s ease'
           }}
-          className={`flex flex-col rounded-2xl shadow-[0_24px_70px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.1)] bg-[#0f172a]/95 backdrop-blur-2xl text-slate-100 overflow-hidden transition-all duration-150 ${
+          className={`flex flex-col rounded-2xl shadow-[0_24px_70px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.12)] bg-[#0f172a]/95 backdrop-blur-2xl text-slate-100 overflow-hidden ${
             isExpanded
-              ? 'w-[95vw] sm:w-[720px] h-[85vh] max-h-[820px]'
-              : 'w-[92vw] sm:w-[460px] h-[600px] max-h-[82vh]'
+              ? 'w-[95vw] sm:w-[760px] h-[85vh] max-h-[840px]'
+              : 'w-[92vw] sm:w-[480px] h-[620px] max-h-[82vh]'
           }`}
         >
           {/* Apple macOS Draggable Window Titlebar */}
