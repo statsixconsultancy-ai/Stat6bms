@@ -161,6 +161,7 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
   const elementStartPos = useRef({ x: 0, y: 0 });
+  const currentFloatPosRef = useRef(floatPos);
   const hasMovedRef = useRef(false);
 
   // Position and dragging states for Chat Window
@@ -199,19 +200,24 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
   // If sidebar expands, automatically move AI icon aside so it never overlaps the sidebar!
   useEffect(() => {
     if (isSidebarOpen && floatPos.x < 252) {
-      setFloatPos(prev => ({
-        ...prev,
-        x: 258
-      }));
+      setFloatPos(prev => {
+        const next = { ...prev, x: 258 };
+        currentFloatPosRef.current = next;
+        return next;
+      });
     }
-  }, [isSidebarOpen]);
+  }, [isSidebarOpen, floatPos.x]);
 
   // Handle window resizing to keep floating icon and window inside viewport
   useEffect(() => {
     const handleResize = () => {
       const w = orbMode === 'orb' ? 56 : 220;
       const h = 54;
-      setFloatPos(prev => clampPosition(prev.x, prev.y, w, h));
+      setFloatPos(prev => {
+        const clamped = clampPosition(prev.x, prev.y, w, h);
+        currentFloatPosRef.current = clamped;
+        return clamped;
+      });
 
       if (dockPos) {
         const winW = isExpanded ? Math.min(760, window.innerWidth - 24) : Math.min(480, window.innerWidth - 24);
@@ -241,7 +247,11 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
       setDockPos(getCenteredWindowPos(isExpanded));
 
       // 2. Automatically move the AI icon aside to the edge of the screen
-      setFloatPos(prev => snapToAsideEdge(prev));
+      setFloatPos(prev => {
+        const aside = snapToAsideEdge(prev);
+        currentFloatPosRef.current = aside;
+        return aside;
+      });
     }
   }, [isOpen, isSidebarOpen]);
 
@@ -279,6 +289,7 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
     const w = orbMode === 'orb' ? 56 : 220;
     const h = 54;
     const newPos = clampPosition(elementStartPos.current.x + dx, elementStartPos.current.y + dy, w, h);
+    currentFloatPosRef.current = newPos;
     setFloatPos(newPos);
   };
 
@@ -296,7 +307,8 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
       setIsOpen(prev => !prev);
     } else {
       // Drag completed -> snap to nearest side edge (Apple AssistiveTouch move aside)
-      const snapped = snapToAsideEdge(floatPos);
+      const snapped = snapToAsideEdge(currentFloatPosRef.current);
+      currentFloatPosRef.current = snapped;
       setFloatPos(snapped);
       try {
         localStorage.setItem('stat6_copilot_float_pos', JSON.stringify(snapped));
