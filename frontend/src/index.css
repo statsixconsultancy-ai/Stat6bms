@@ -80,3 +80,12 @@
 .dark ::-webkit-scrollbar-thumb {
   background: #334155;
 }
+
+@keyframes toastTimerProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

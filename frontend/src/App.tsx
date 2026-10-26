@@ -3183,13 +3183,91 @@ export default function App() {
         onShowNotification={setSchedulerNotification}
       />
 
-      {/* Floating System Notification */}
-      {schedulerNotification && (
-        <div className="fixed top-6 right-6 z-50 px-4 py-3 bg-[#162340] text-white border border-[#2563eb] rounded-xl shadow-2xl flex items-center gap-2.5 text-xs animate-in fade-in slide-in-from-top-4">
-          <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
-          <span>{schedulerNotification}</span>
-        </div>
-      )}
+      {/* Floating Production-Grade Dynamic Island System Notification */}
+      {schedulerNotification && (() => {
+        const isError = /fail|error|blocked|unreachable|rejected/i.test(schedulerNotification);
+        const isWarning = /warn|pending|requires/i.test(schedulerNotification);
+        const isAI = /copilot|scheduler|task|agent|mesh/i.test(schedulerNotification);
+
+        let tag = 'System Status';
+        let badgeStyle = 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300';
+        let icon = <CheckCircle2 size={16} className="text-emerald-400" />;
+
+        if (isError) {
+          tag = 'Action Failed';
+          badgeStyle = 'border-rose-500/40 bg-rose-500/15 text-rose-300';
+          icon = <AlertTriangle size={16} className="text-rose-400" />;
+        } else if (isWarning) {
+          tag = 'Attention';
+          badgeStyle = 'border-amber-500/40 bg-amber-500/15 text-amber-300';
+          icon = <Clock size={16} className="text-amber-400" />;
+        } else if (/persona|session|auth/i.test(schedulerNotification)) {
+          tag = 'Session Persona';
+          badgeStyle = 'border-blue-500/40 bg-blue-500/15 text-blue-300';
+          icon = <User size={16} className="text-blue-400" />;
+        } else if (/lead|deal|crm|pipeline/i.test(schedulerNotification)) {
+          tag = 'Commercial CRM';
+          badgeStyle = 'border-indigo-500/40 bg-indigo-500/15 text-indigo-300';
+          icon = <Target size={16} className="text-indigo-400" />;
+        } else if (/invoice|finance|ledger|journal/i.test(schedulerNotification)) {
+          tag = 'Finance Ledger';
+          badgeStyle = 'border-teal-500/40 bg-teal-500/15 text-teal-300';
+          icon = <CreditCard size={16} className="text-teal-400" />;
+        } else if (isAI) {
+          tag = 'STAT6 Copilot';
+          badgeStyle = 'border-purple-500/40 bg-purple-500/15 text-purple-300';
+          icon = <GeminiSparkleIcon size={16} />;
+        }
+
+        return (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] w-auto max-w-[94vw] sm:max-w-md pointer-events-auto select-none animate-in fade-in slide-in-from-top-3 duration-200"
+          >
+            <div className="relative overflow-hidden flex items-center justify-between gap-3 pl-3 pr-2.5 py-2.5 rounded-2xl bg-black/85 dark:bg-[#070b14]/92 backdrop-blur-2xl border border-white/20 text-white shadow-[0_16px_40px_rgba(0,0,0,0.65),inset_0_1px_1px_rgba(255,255,255,0.35)]">
+              {/* Left: Icon Jewel & Message */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0 shadow-inner">
+                  {icon}
+                </div>
+
+                <div className="flex flex-col min-w-0 pr-1 text-left">
+                  <div className="flex items-center gap-1.5 leading-none mb-1">
+                    <span className={`text-[9.5px] font-mono font-semibold px-2 py-0.5 rounded-full border ${badgeStyle}`}>
+                      ✦ {tag}
+                    </span>
+                    <span className="text-[10px] text-white/40 font-mono">
+                      just now
+                    </span>
+                  </div>
+                  <p className="text-[12px] font-medium text-slate-100 tracking-tight leading-snug break-words">
+                    {schedulerNotification}
+                  </p>
+                </div>
+              </div>
+
+              {/* Right: Dismiss Action */}
+              <button
+                onClick={() => setSchedulerNotification(null)}
+                className="p-1 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors flex-shrink-0 cursor-pointer ml-1"
+                title="Dismiss"
+                aria-label="Dismiss notification"
+              >
+                <X size={14} />
+              </button>
+
+              {/* Bottom Subtle Animated Progress Line */}
+              <div className="absolute bottom-0 left-3 right-3 h-[2px] bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-400 via-emerald-400 to-indigo-400"
+                  style={{ animation: 'toastTimerProgress 4.5s linear forwards' }}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
