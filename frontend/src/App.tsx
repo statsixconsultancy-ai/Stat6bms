@@ -1402,19 +1402,17 @@ export default function App() {
         {/* Dynamic Top Workspace Header Bar */}
         <header className="h-12 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131c2e] px-4 sm:px-6 flex items-center justify-between flex-shrink-0 gap-3">
           <div className="flex items-center gap-2.5 text-black dark:text-white">
-            {/* 3-Line Hamburger Sidebar Toggle Button (ChatGPT style) */}
-            <button
-              onClick={toggleSidebar}
-              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                !isSidebarOpen
-                  ? 'bg-blue-600/15 border-blue-500/40 text-blue-600 dark:text-blue-400 hover:bg-blue-600/25 shadow-xs'
-                  : 'border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-              }`}
-              title={isSidebarOpen ? 'Collapse sidebar (Ctrl+B)' : 'Expand sidebar (Ctrl+B)'}
-              aria-label={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-            >
-              <Menu size={17} />
-            </button>
+            {/* 3-Line Hamburger Sidebar Expand Button - Only visible when sidebar is closed */}
+            {!isSidebarOpen && (
+              <button
+                onClick={toggleSidebar}
+                className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-all cursor-pointer flex items-center justify-center shadow-xs"
+                title="Expand sidebar (Ctrl+B)"
+                aria-label="Expand sidebar"
+              >
+                <Menu size={17} />
+              </button>
+            )}
 
             <span className="font-bold text-black dark:text-white tracking-tight">STAT6</span>
             <span className="text-slate-400 font-normal">/</span>
