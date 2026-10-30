@@ -8,9 +8,28 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        brand: ['"Barlow Semi Condensed"', '"Arial Narrow"', 'sans-serif'],
+        display: ['"Geist"', '"Plus Jakarta Sans"', 'ui-sans-serif', 'sans-serif'],
+        sans: ['"Geist"', '"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        mono: ['"Geist Mono"', 'ui-monospace', 'monospace'],
+        hand: ['"Caveat"', '"Segoe Print"', 'cursive'],
+        serif: ['"Instrument Serif"', 'ui-serif', 'Georgia', 'serif'],
       },
       colors: {
+        ink: {
+          DEFAULT: '#0b0f19',
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          500: '#64748b',
+          900: '#0b0f19',
+        },
+        pinkdeep: '#ec4899',
+        bluedeep: '#2563eb',
+        mintdeep: '#059669',
+        mint: '#10b981',
+        sundeep: '#d97706',
+        butter: '#fef3c7',
+        lavender: '#ede9fe',
         brand: {
           50: '#eef2ff',
           100: '#e0e7ff',

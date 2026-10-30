@@ -1141,7 +1141,7 @@ export default function App() {
               <div className="h-7 w-7 rounded-lg bg-[#2563eb] flex items-center justify-center text-white shadow-xs flex-shrink-0">
                 <BarChart2 size={16} className="text-white" />
               </div>
-              <span className="font-bold text-[16px] text-white tracking-wider">
+              <span className="font-brand font-bold text-[18px] text-white tracking-[0.02em]">
                 STAT6
               </span>
             </button>
@@ -1520,7 +1520,7 @@ export default function App() {
               </button>
             )}
 
-            <span className="font-bold text-black dark:text-white tracking-tight">STAT6</span>
+            <span className="font-brand font-bold text-[17px] text-black dark:text-white tracking-[0.02em]">STAT6</span>
             <span className="text-slate-400 font-normal">/</span>
             <span className="uppercase text-xs tracking-wider text-black dark:text-white font-normal">
               {['CUSTOMER', 'VENDOR', 'PARTNER'].includes(activePersona) ? `${activePersona} PORTAL` : activeTab}
