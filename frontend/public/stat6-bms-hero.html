@@ -31,7 +31,7 @@
       font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      overflow-x: hidden;
+      overflow-x: clip;
     }
 
     a {
@@ -428,8 +428,8 @@
     /* ---------------------------------------------------- */
     .statement {
       position: relative;
-      height: 306vh;
-      margin-top: -31vh;
+      height: 280vh;
+      margin-top: -25vh;
       pointer-events: none;
     }
 
@@ -441,22 +441,21 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 0 16px;
     }
 
     #stmt {
-      position: absolute;
-      top: 41.5vh;
-      left: 0;
-      right: 0;
+      position: relative;
+      margin: 0 auto;
+      max-width: min(980px, 92vw);
       text-align: center;
       font-weight: 400;
-      font-size: clamp(20px, 2.8vw, 42px);
-      line-height: 1.16;
-      letter-spacing: -.03em;
+      font-size: clamp(21px, 2.4vw, 36px);
+      line-height: 1.28;
+      letter-spacing: -.025em;
       color: var(--ink);
-      white-space: nowrap;
       will-change: transform;
-      padding: 0 var(--gut);
+      padding: 0 16px;
     }
 
     /* ---------------------------------------------------- */
@@ -763,10 +762,10 @@
     <section class="statement" id="statement">
       <div class="pin">
         <p id="stmt">
-          STAT6 BMS is your unified business management system <br>
-          that connects commercial CRM, financial ledgers, <br>
-          HR payroll, agile sprints, and vendor portals, <br>
-          ensuring that across every department, we shall collaborate
+          STAT6 BMS is your unified business management system.<br>
+          Connecting commercial CRM, double-entry ledgers,<br>
+          agile sprints, HR payroll, and vendor portals.<br>
+          Ensuring that across every department, we shall collaborate.
         </p>
       </div>
     </section>
@@ -919,19 +918,19 @@
         const t = clamp((p * (1 + spread) - (i / n)) / spread);
 
         if (t <= 0) {
-          c.style.opacity = '0';
+          c.style.opacity = ghostColor === 'rgba(255,255,255,0)' ? '0' : '0.15';
           c.style.color = ghostColor;
-          c.style.filter = 'blur(8px)';
+          c.style.filter = ghostColor === 'rgba(255,255,255,0)' ? 'none' : 'blur(2px)';
         } else if (t <= 0.35) {
           const sub = t / 0.35;
-          c.style.opacity = sub;
+          c.style.opacity = ghostColor === 'rgba(255,255,255,0)' ? sub : (0.15 + sub * 0.45);
           c.style.color = ghostColor;
-          c.style.filter = `blur(${8 - sub * 6.5}px)`;
+          c.style.filter = `blur(${2 - sub * 1}px)`;
         } else if (t <= 0.70) {
           const sub = (t - 0.35) / 0.35;
           c.style.opacity = '1';
           c.style.color = accentColor;
-          c.style.filter = `blur(${1.5 - sub * 1.5}px)`;
+          c.style.filter = `blur(${1 - sub * 1}px)`;
         } else {
           c.style.opacity = '1';
           c.style.color = targetFinal;
@@ -946,7 +945,7 @@
 
     // Initial paint at p=0
     paintChars(h1Chars, 0, 0.35, '#0b1d3a', '#3f7cff', 'rgba(255,255,255,0)');
-    paintChars(stmtChars, 0, 0.16, '#0b1d3a', '#3f7cff', '#ffffff');
+    paintChars(stmtChars, 0, 0.16, '#0b1d3a', '#3f7cff', '#64748b');
     paintChars(h2Chars, 0, 0.35, '#ffffff', '#8fe6f4', '#5c6f92');
 
     /* =======================================================
@@ -1115,14 +1114,14 @@
       targetSoft = k.soft;
 
       // Statement Section
-      // Rise: s = clamp((q - .69)/.74), translateY = .205 * (1-s)^2 * vh
-      const s = clamp((q - 0.69) / 0.74);
-      const translateY = 0.205 * Math.pow(1 - s, 2) * vh;
+      // Rise: s = clamp((q - .35)/.65), translateY = .15 * (1-s)^2 * vh
+      const s = clamp((q - 0.35) / 0.65);
+      const translateY = 0.15 * Math.pow(1 - s, 2) * vh;
       stmtEl.style.transform = `translateY(${translateY}px)`;
 
-      // Reveal: p = clamp((q - .56)/2.03)
-      const pStmt = clamp((q - 0.56) / 2.03);
-      paintChars(stmtChars, pStmt, 0.16, '#0b1d3a', '#3f7cff', '#ffffff');
+      // Reveal: p = clamp((q - .32)/1.15)
+      const pStmt = clamp((q - 0.32) / 1.15);
+      paintChars(stmtChars, pStmt, 0.16, '#0b1d3a', '#3f7cff', '#64748b');
 
       // Nav CTA pop
       if (pStmt > 0.4) {

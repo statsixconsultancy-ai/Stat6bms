@@ -353,8 +353,12 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
     const imgData = ctx.createImageData(W, H);
     const data = imgData.data;
 
-    function splitLetters(el: HTMLElement | null) {
+    function splitLetters(el: HTMLElement | null): HTMLElement[] {
       if (!el) return [];
+      if (el.dataset.split === 'true') {
+        return Array.from(el.querySelectorAll('.char')) as HTMLElement[];
+      }
+      el.dataset.split = 'true';
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null);
       const nodes: Node[] = [];
       let n: Node | null;
@@ -379,11 +383,12 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
             frag.appendChild(document.createTextNode(part));
           } else {
             const wrap = document.createElement('span');
+            wrap.className = 'word-wrap';
             wrap.style.display = 'inline-block';
-            wrap.style.whiteSpace = 'nowrap';
             for (let i = 0; i < part.length; i++) {
               const ch = part[i];
               const s = document.createElement('span');
+              s.className = 'char';
               s.style.display = 'inline-block';
               s.style.transition = 'color .15s linear';
               s.textContent = ch;
@@ -415,19 +420,19 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
         const t = clamp((p * (1 + spread) - (i / n)) / spread);
 
         if (t <= 0) {
-          c.style.opacity = '0';
+          c.style.opacity = ghostColor === 'rgba(255,255,255,0)' ? '0' : '0.15';
           c.style.color = ghostColor;
-          c.style.filter = 'blur(8px)';
+          c.style.filter = ghostColor === 'rgba(255,255,255,0)' ? 'none' : 'blur(2px)';
         } else if (t <= 0.35) {
           const sub = t / 0.35;
-          c.style.opacity = String(sub);
+          c.style.opacity = ghostColor === 'rgba(255,255,255,0)' ? String(sub) : String(0.15 + sub * 0.45);
           c.style.color = ghostColor;
-          c.style.filter = `blur(${8 - sub * 6.5}px)`;
+          c.style.filter = `blur(${2 - sub * 1}px)`;
         } else if (t <= 0.70) {
           const sub = (t - 0.35) / 0.35;
           c.style.opacity = '1';
           c.style.color = accentColor;
-          c.style.filter = `blur(${1.5 - sub * 1.5}px)`;
+          c.style.filter = `blur(${1 - sub * 1}px)`;
         } else {
           c.style.opacity = '1';
           c.style.color = targetFinal;
@@ -441,7 +446,7 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
     const h2Chars = splitLetters(h2Ref.current);
 
     paintChars(h1Chars, 0, 0.35, '#0b1d3a', '#3f7cff', 'rgba(255,255,255,0)');
-    paintChars(stmtChars, 0, 0.16, '#0b1d3a', '#3f7cff', '#ffffff');
+    paintChars(stmtChars, 0, 0.16, '#0b1d3a', '#3f7cff', '#64748b');
     paintChars(h2Chars, 0, 0.35, '#ffffff', '#8fe6f4', '#5c6f92');
 
     // Keyframes table
@@ -581,13 +586,13 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
 
       // Statement Section
       if (stmtRef.current) {
-        const s = clamp((q - 0.69) / 0.74);
-        const translateY = 0.205 * Math.pow(1 - s, 2) * vh;
+        const s = clamp((q - 0.35) / 0.65);
+        const translateY = 0.15 * Math.pow(1 - s, 2) * vh;
         stmtRef.current.style.transform = `translateY(${translateY}px)`;
       }
 
-      const pStmt = clamp((q - 0.56) / 2.03);
-      paintChars(stmtChars, pStmt, 0.16, '#0b1d3a', '#3f7cff', '#ffffff');
+      const pStmt = clamp((q - 0.32) / 1.15);
+      paintChars(stmtChars, pStmt, 0.16, '#0b1d3a', '#3f7cff', '#64748b');
 
       // Nav CTA pop
       if (navRef.current) {
@@ -672,7 +677,7 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
   }, []);
 
   return (
-    <div className={`relative min-h-screen w-full bg-white text-[#0b1d3a] antialiased font-sans select-none overflow-x-hidden`}>
+    <div className="relative min-h-screen w-full bg-white text-[#0b1d3a] antialiased font-sans select-none [overflow-x:clip]">
       
       {/* ---------------------------------------------------- */}
       {/* 0. ATMOSPHERIC BOWL GLOW 96×60 CANVAS               */}
@@ -863,16 +868,16 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
       {/* ---------------------------------------------------- */}
       {/* 3. SCENE 2: PINNED STATEMENT SECTION                 */}
       {/* ---------------------------------------------------- */}
-      <section id="statement" className="relative h-[306vh] -mt-[31vh] pointer-events-none z-10">
-        <div className="sticky top-0 h-screen overflow-hidden flex items-center justify-center">
+      <section id="statement" className="relative h-[280vh] -mt-[25vh] pointer-events-none z-10">
+        <div className="sticky top-0 h-screen overflow-hidden flex items-center justify-center px-4 sm:px-8">
           <p
             ref={stmtRef}
-            className="absolute top-[41.5vh] left-0 right-0 text-center font-normal text-[clamp(20px,2.8vw,42px)] leading-[1.16] tracking-[-0.03em] text-[#0b1d3a] whitespace-nowrap will-change-transform px-6"
+            className="w-full max-w-[min(980px,92vw)] mx-auto text-center font-normal text-[clamp(21px,2.4vw,36px)] leading-[1.28] tracking-[-0.025em] text-[#0b1d3a] will-change-transform"
           >
-            STAT6 BMS is your unified business management system <br />
-            that connects commercial CRM, financial ledgers, <br />
-            HR payroll, agile sprints, and vendor portals, <br />
-            ensuring that across every department, we shall collaborate
+            STAT6 BMS is your unified business management system.<br className="hidden sm:inline" />
+            Connecting commercial CRM, double-entry ledgers,<br className="hidden sm:inline" />
+            agile sprints, HR payroll, and vendor portals.<br className="hidden sm:inline" />
+            Ensuring that across every department, we shall collaborate.
           </p>
         </div>
       </section>
