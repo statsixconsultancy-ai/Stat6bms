@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ShieldCheck,
   Lock,
@@ -26,17 +26,12 @@ import {
   Clock,
   ChevronRight,
   TrendingUp,
-  Globe,
-  Database,
-  Cpu,
-  Server,
   FolderGit2,
   Receipt,
   Package,
   ShoppingCart,
   Headphones,
-  Sliders,
-  ShieldAlert
+  Sliders
 } from 'lucide-react';
 import { GeminiSparkleIcon } from './GeminiIcons';
 
@@ -148,23 +143,15 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
     }
   ];
 
-  // 14 Integrated BMS Modules
-  const bmsModules = [
-    { id: 'crm', title: 'Commercial CRM & Leads', icon: Users, color: 'text-blue-500', desc: 'Unified pipeline, contact timelines, and 1-click lead qualification.' },
-    { id: 'deals', title: 'Deals & Revenue Forecast', icon: TrendingUp, color: 'text-indigo-500', desc: 'Weighted forecast stages, booking approvals, and win-probability scoring.' },
-    { id: 'jira', title: 'Jira Agile Sprints', icon: FolderGit2, color: 'text-sky-500', desc: 'Kanban boards, backlog sprint planning, and GitHub commit tracking.' },
-    { id: 'mkt', title: 'Marketing ROI & Campaigns', icon: Sparkles, color: 'text-rose-500', desc: 'Multi-channel attribution, ad spend tracking, and CAC calculation.' },
-    { id: 'hr', title: 'HR Directory & Staff', icon: Briefcase, color: 'text-emerald-500', desc: 'Employee onboarding, attendance, leave requests, and compensation.' },
-    { id: 'finance', title: 'Finance, Invoices & GL', icon: Receipt, color: 'text-teal-500', desc: 'Double-entry general ledger, automated invoicing, and tax journals.' },
-    { id: 'inventory', title: 'Inventory & SKU Matrix', icon: Package, color: 'text-amber-500', desc: 'Multi-warehouse stock levels, reorder alerts, and barcode lookups.' },
-    { id: 'procurement', title: 'Procurement & Vendor POs', icon: ShoppingCart, color: 'text-yellow-500', desc: 'Purchase requisition workflows, 3-way matching, and supplier scoring.' },
-    { id: 'support', title: 'Support Desk & SLAs', icon: Headphones, color: 'text-pink-500', desc: 'Omnichannel ticketing, automated SLA triggers, and CSAT scoring.' },
-    { id: 'collab', title: 'Real-Time Team Chat', icon: Mail, color: 'text-purple-500', desc: 'Channel conversations, direct messages, and contextual thread links.' },
-    { id: 'automation', title: 'WHEN-IF-DO Automation', icon: Zap, color: 'text-amber-400', desc: 'Visual DAG workflow compiler replacing Deluge and Zapier scripts.' },
-    { id: 'vault', title: 'Secrets & Password Vault', icon: Key, color: 'text-emerald-400', desc: 'AES-256-GCM zero-knowledge secret storage with rotation audit logs.' },
-    { id: 'copilot', title: 'Groq Agentic AI Mesh', icon: Bot, color: 'text-purple-400', desc: 'Floating Apple-style assistant executing typed tools across 14 services.' },
-    { id: 'governance', title: 'RBAC & Module Controls', icon: Sliders, color: 'text-slate-400', desc: 'Granular feature toggles, role permissions, and tenant isolation.' }
-  ];
+  // Canvas and Letter Reveal Refs
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
+  const h1Ref = useRef<HTMLHeadingElement | null>(null);
+  const stmtRef = useRef<HTMLParagraphElement | null>(null);
+  const h2Ref = useRef<HTMLHeadingElement | null>(null);
+  const splitRef = useRef<HTMLElement | null>(null);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const shipRef = useRef<HTMLImageElement | null>(null);
 
   // Native OAuth 2.0 Sign In Handler
   const handleSignIn = async (e: React.FormEvent) => {
@@ -352,494 +339,613 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
     }
   };
 
+  /* =======================================================
+     BOWL GLOW & SCROLL LETTER REVEAL SIMULATION ENGINE
+     ======================================================= */
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    const W = 96;
+    const H = 60;
+    const imgData = ctx.createImageData(W, H);
+    const data = imgData.data;
+
+    function splitLetters(el: HTMLElement | null) {
+      if (!el) return [];
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null);
+      const nodes: Node[] = [];
+      let n: Node | null;
+      while ((n = walker.nextNode())) {
+        if (n.nodeType === 3 || (n.nodeType === 1 && (n as HTMLElement).tagName === 'BR')) {
+          nodes.push(n);
+        }
+      }
+
+      const charSpans: HTMLElement[] = [];
+      nodes.forEach(node => {
+        if ((node as HTMLElement).tagName === 'BR') return;
+        const text = node.textContent || '';
+        const parent = node.parentElement;
+        const isHighlight = parent && parent.classList.contains('hl');
+
+        const words = text.split(/(\s+)/);
+        const frag = document.createDocumentFragment();
+
+        words.forEach(part => {
+          if (/^\s+$/.test(part)) {
+            frag.appendChild(document.createTextNode(part));
+          } else {
+            const wrap = document.createElement('span');
+            wrap.style.display = 'inline-block';
+            wrap.style.whiteSpace = 'nowrap';
+            for (let i = 0; i < part.length; i++) {
+              const ch = part[i];
+              const s = document.createElement('span');
+              s.style.display = 'inline-block';
+              s.style.transition = 'color .15s linear';
+              s.textContent = ch;
+              if (isHighlight) s.dataset.hl = '1';
+              wrap.appendChild(s);
+              charSpans.push(s);
+            }
+            frag.appendChild(wrap);
+          }
+        });
+
+        node.parentNode?.replaceChild(frag, node);
+      });
+
+      return charSpans;
+    }
+
+    function clamp(val: number, min = 0, max = 1) {
+      return Math.min(Math.max(val, min), max);
+    }
+
+    function paintChars(chars: HTMLElement[], p: number, spread: number, finalColor: string, accentColor: string, ghostColor: string) {
+      const n = chars.length;
+      if (!n) return;
+      for (let i = 0; i < n; i++) {
+        const c = chars[i];
+        const isHl = c.dataset.hl === '1';
+        const targetFinal = isHl ? '#5b7cf0' : finalColor;
+        const t = clamp((p * (1 + spread) - (i / n)) / spread);
+
+        if (t <= 0) {
+          c.style.opacity = '0';
+          c.style.color = ghostColor;
+          c.style.filter = 'blur(8px)';
+        } else if (t <= 0.35) {
+          const sub = t / 0.35;
+          c.style.opacity = String(sub);
+          c.style.color = ghostColor;
+          c.style.filter = `blur(${8 - sub * 6.5}px)`;
+        } else if (t <= 0.70) {
+          const sub = (t - 0.35) / 0.35;
+          c.style.opacity = '1';
+          c.style.color = accentColor;
+          c.style.filter = `blur(${1.5 - sub * 1.5}px)`;
+        } else {
+          c.style.opacity = '1';
+          c.style.color = targetFinal;
+          c.style.filter = 'none';
+        }
+      }
+    }
+
+    const h1Chars = splitLetters(h1Ref.current);
+    const stmtChars = splitLetters(stmtRef.current);
+    const h2Chars = splitLetters(h2Ref.current);
+
+    paintChars(h1Chars, 0, 0.35, '#0b1d3a', '#3f7cff', 'rgba(255,255,255,0)');
+    paintChars(stmtChars, 0, 0.16, '#0b1d3a', '#3f7cff', '#ffffff');
+    paintChars(h2Chars, 0, 0.35, '#ffffff', '#8fe6f4', '#5c6f92');
+
+    // Keyframes table
+    const keys = [
+      { q: 0,    tip: .30, half: .34, soft: .22 },
+      { q: .03,  tip: .45, half: .38, soft: .26 },
+      { q: .08,  tip: .65, half: .38, soft: .22 },
+      { q: .18,  tip: .80, half: .38, soft: .22 },
+      { q: .40,  tip: .95, half: .38, soft: .19 },
+      { q: .66,  tip: 1.05, half: .46, soft: .16 },
+      { q: .87,  tip: 1.05, half: .66, soft: .13 },
+      { q: 1.15, tip: 1.10, half: .90, soft: .10 },
+      { q: 1.43, tip: 1.30, half: 1.60, soft: .10 },
+      { q: 1.80, tip: 2.40, half: 3.00, soft: .10 }
+    ];
+
+    function interpKeys(q: number) {
+      if (q <= keys[0].q) return { ...keys[0] };
+      if (q >= keys[keys.length - 1].q) return { ...keys[keys.length - 1] };
+      for (let i = 0; i < keys.length - 1; i++) {
+        const k1 = keys[i];
+        const k2 = keys[i + 1];
+        if (q >= k1.q && q <= k2.q) {
+          const f = (q - k1.q) / (k2.q - k1.q);
+          return {
+            tip: k1.tip + (k2.tip - k1.tip) * f,
+            half: k1.half + (k2.half - k1.half) * f,
+            soft: k1.soft + (k2.soft - k1.soft) * f
+          };
+        }
+      }
+      return { ...keys[0] };
+    }
+
+    function smoothstep(x: number) {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      return x * x * (3 - 2 * x);
+    }
+
+    let curTip = -0.3;
+    let curHalf = 0.3;
+    let curSoft = 0.1;
+
+    let targetTip = 0.30;
+    let targetHalf = 0.34;
+    let targetSoft = 0.22;
+
+    let isIntro = true;
+    let introStartTime = 0;
+
+    function distToSegmentSquared(px: number, py: number, x1: number, y1: number, x2: number, y2: number) {
+      const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+      if (l2 === 0) return (px - x1) * (px - x1) + (py - y1) * (py - y1);
+      const t = clamp(((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2);
+      const cx = x1 + t * (x2 - x1);
+      const cy = y1 + t * (y2 - y1);
+      return (px - cx) * (px - cx) + (py - cy) * (py - cy);
+    }
+
+    function renderGlow(time: number) {
+      const aspect = window.innerWidth / (window.innerHeight || 1);
+      const driftTip = curTip + Math.sin(time * 0.00033 + 1.3) * 0.02;
+      const driftHalf = curHalf + Math.sin(time * 0.0005) * 0.015;
+      const tipVal = Math.max(0.01, driftTip);
+
+      const NPTS = 48;
+      const ptsX = new Float32Array(NPTS);
+      const ptsY = new Float32Array(NPTS);
+      for (let i = 0; i < NPTS; i++) {
+        const yy = -0.3 + (tipVal + 0.3) * (i / (NPTS - 1));
+        ptsY[i] = yy;
+        const norm = Math.max(0, 1 - yy / tipVal);
+        ptsX[i] = driftHalf * aspect * Math.pow(norm, 0.72);
+      }
+
+      const segLen = NPTS - 1;
+      const RND = 0.25;
+      const softVal = Math.max(0.01, curSoft);
+
+      let idx = 0;
+      for (let y = 0; y < H; y++) {
+        const py = y / H;
+        for (let x = 0; x < W; x++) {
+          const px = Math.abs(x / W - 0.5) * aspect;
+
+          let minD2 = 1e9;
+          for (let s = 0; s < segLen; s++) {
+            const d2 = distToSegmentSquared(px, py, ptsX[s], ptsY[s], ptsX[s + 1], ptsY[s + 1]);
+            if (d2 < minD2) minD2 = d2;
+          }
+          const dist = Math.sqrt(minD2);
+
+          let inside = false;
+          if (py < tipVal) {
+            const curveX = driftHalf * aspect * Math.pow(Math.max(0, 1 - py / tipVal), 0.72);
+            if (px < curveX) inside = true;
+          }
+
+          const sd = inside ? -dist : dist;
+          const sdRnd = sd - RND;
+          const g = 1 - smoothstep((sdRnd + softVal) / (2 * softVal));
+
+          let r: number, gCol: number, b: number;
+          if (g < 0.38) {
+            const f = smoothstep(g / 0.38);
+            r = Math.round(255 + (210 - 255) * f);
+            gCol = Math.round(255 + (218 - 255) * f);
+            b = Math.round(255 + (255 - 255) * f);
+          } else {
+            const f = smoothstep((g - 0.38) / 0.62);
+            r = Math.round(210 + (143 - 210) * f);
+            gCol = Math.round(218 + (213 - 218) * f);
+            b = Math.round(255 + (241 - 255) * f);
+          }
+
+          data[idx]     = r;
+          data[idx + 1] = gCol;
+          data[idx + 2] = b;
+          data[idx + 3] = 255;
+          idx += 4;
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function onScroll() {
+      const scrollY = window.scrollY || window.pageYOffset || 0;
+      const vh = window.innerHeight || 1;
+      const q = scrollY / vh;
+
+      const k = interpKeys(q);
+      targetTip = k.tip;
+      targetHalf = k.half;
+      targetSoft = k.soft;
+
+      // Statement Section
+      if (stmtRef.current) {
+        const s = clamp((q - 0.69) / 0.74);
+        const translateY = 0.205 * Math.pow(1 - s, 2) * vh;
+        stmtRef.current.style.transform = `translateY(${translateY}px)`;
+      }
+
+      const pStmt = clamp((q - 0.56) / 2.03);
+      paintChars(stmtChars, pStmt, 0.16, '#0b1d3a', '#3f7cff', '#ffffff');
+
+      // Nav CTA pop
+      if (navRef.current) {
+        if (pStmt > 0.4) {
+          navRef.current.classList.add('nav-expanded');
+        } else {
+          navRef.current.classList.remove('nav-expanded');
+        }
+      }
+
+      // Dark Split Section
+      if (splitRef.current) {
+        const splitRect = splitRef.current.getBoundingClientRect();
+        const splitTop = splitRect.top;
+        const p2 = clamp((0.8 - splitTop / vh) / 0.65);
+        paintChars(h2Chars, p2, 0.35, '#ffffff', '#8fe6f4', '#5c6f92');
+
+        if (rowRef.current) {
+          if (p2 > 0.92) {
+            rowRef.current.style.opacity = '1';
+            rowRef.current.style.transform = 'translateY(0)';
+          } else {
+            rowRef.current.style.opacity = '0';
+            rowRef.current.style.transform = 'translateY(14px)';
+          }
+        }
+
+        if (shipRef.current) {
+          const scaleProg = clamp(1 - splitTop / vh);
+          const shipScale = 1.08 - 0.08 * scaleProg;
+          shipRef.current.style.transform = `scale(${shipScale})`;
+        }
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    let animationFrameId: number;
+    let startTime: number | null = null;
+
+    function loop(time: number) {
+      if (!startTime) startTime = time;
+      const elapsed = (time - startTime) / 1000;
+
+      if (isIntro) {
+        if (elapsed < 0.25) {
+          curTip = -0.3;
+          curHalf = 0.3;
+          curSoft = 0.1;
+        } else if (elapsed < 1.30) {
+          const prog = smoothstep((elapsed - 0.25) / 1.05);
+          curTip = -0.3 + (targetTip - (-0.3)) * prog;
+          curHalf = 0.3 + (targetHalf - 0.3) * prog;
+          curSoft = 0.1 + (targetSoft - 0.1) * prog;
+        } else {
+          isIntro = false;
+        }
+      } else {
+        curTip += (targetTip - curTip) * 0.12;
+        curHalf += (targetHalf - curHalf) * 0.12;
+        curSoft += (targetSoft - curSoft) * 0.12;
+      }
+
+      if (elapsed <= 1.5) {
+        const h1Prog = clamp((elapsed - 0.2) / 1.25);
+        paintChars(h1Chars, h1Prog, 0.35, '#0b1d3a', '#3f7cff', 'rgba(255,255,255,0)');
+      }
+
+      renderGlow(time);
+      animationFrameId = requestAnimationFrame(loop);
+    }
+
+    onScroll();
+    animationFrameId = requestAnimationFrame(loop);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
+
   return (
-    <div className={`min-h-screen w-full flex flex-col ${isDarkMode ? 'dark bg-[#0b0f19] text-white' : 'bg-white text-[#0b0f19]'} antialiased font-sans select-none transition-colors duration-200`}>
+    <div className={`relative min-h-screen w-full bg-white text-[#0b1d3a] antialiased font-sans select-none overflow-x-hidden`}>
       
       {/* ---------------------------------------------------- */}
-      {/* 1. TOP NAVBAR (STAT6 BMS BRANDING & CONTROLS)        */}
+      {/* 0. ATMOSPHERIC BOWL GLOW 96×60 CANVAS               */}
       {/* ---------------------------------------------------- */}
-      <header className="h-20 px-6 sm:px-12 xl:px-20 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] bg-white/90 dark:bg-[#0b0f19]/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="flex items-center gap-10">
-          {/* STAT6 Logo in signature font-brand */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="flex items-center gap-2.5 text-left cursor-pointer group"
-            >
-              <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-xs">
-                <BarChart2 size={18} className="text-white" />
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-brand font-bold text-[28px] tracking-[0.015em] text-[#0b0f19] dark:text-white transition-opacity group-hover:opacity-85">
-                  STAT6
-                </span>
-                <span className="font-brand font-semibold text-[17px] text-[#2563eb] tracking-wide">
-                  BMS
-                </span>
-              </div>
-            </button>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-black/5 dark:border-white/10 font-semibold">
-              v2.4
+      <div className="fixed inset-0 z-0 pointer-events-none bg-white">
+        <canvas ref={canvasRef} width={96} height={60} className="absolute inset-0 w-full h-full block" />
+      </div>
+
+      {/* ---------------------------------------------------- */}
+      {/* 1. FLOATING PILL NAVBAR                              */}
+      {/* ---------------------------------------------------- */}
+      <header
+        ref={navRef}
+        className="fixed z-50 top-5 left-[clamp(20px,5.7vw,82px)] right-[clamp(20px,5.7vw,82px)] h-[60px] rounded-full bg-white flex items-center justify-between px-2.5 sm:px-6 shadow-[0_1px_0_rgba(11,29,58,0.04),0_10px_30px_-18px_rgba(11,29,58,0.25)] transition-all duration-300"
+      >
+        {/* Left: Brand Mark & STAT6 BMS */}
+        <div className="flex items-center gap-2.5">
+          <svg className="w-[22px] h-[22px] flex-shrink-0" viewBox="0 0 22 22">
+            <circle cx="11" cy="11" r="11" fill="#5b7cf0" />
+            <path d="M5 9.2c2.3-1.6 4.7-1.6 7 0s4.7 1.6 7 0" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M5 13.2c2.3-1.6 4.7-1.6 7 0s4.7 1.6 7 0" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <div className="flex items-baseline gap-1.5 font-sans">
+            <span className="text-[17px] font-bold text-[#0b1d3a] tracking-tight">
+              STAT6
+            </span>
+            <span className="text-xs font-semibold text-[#5b7cf0] tracking-wide">
+              BMS
+            </span>
+            <span className="hidden sm:inline-block text-[11px] text-[#71829e] font-medium pl-2 ml-1 border-l border-[#0b1d3a]/15">
+              we shall collaborate
             </span>
           </div>
-
-          {/* Quick Nav Anchors */}
-          <nav className="hidden lg:flex items-center gap-7 text-[13.5px] font-medium text-[#0b0f19]/70 dark:text-white/70">
-            <a href="#overview" className="hover:text-[#0b0f19] dark:hover:text-white transition">Platform Overview</a>
-            <a href="#modules" className="hover:text-[#0b0f19] dark:hover:text-white transition">14 Modules</a>
-            <a href="#portals" className="hover:text-[#0b0f19] dark:hover:text-white transition">7 RBAC Portals</a>
-            <button
-              onClick={() => setShowContractModal(true)}
-              className="hover:text-[#0b0f19] dark:hover:text-white transition cursor-pointer"
-            >
-              Enterprise MSA
-            </button>
-          </nav>
         </div>
 
-        {/* Right Nav Action Pills */}
-        <div className="flex items-center gap-3">
-          {/* Live OAuth indicator pill */}
-          <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-3.5 py-1.5 text-xs font-sans text-[#0b0f19] dark:text-white/90 shadow-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="font-medium">Native OAuth 2.0 Active</span>
-            <ShieldCheck size={13} className="text-emerald-500" />
-          </div>
-
-          {/* 1-Click Role Presets */}
+        {/* Center: Nav Links */}
+        <nav className="hidden lg:flex items-center gap-7 text-[14px] font-medium text-[#0b1d3a]/90">
+          <a href="#hero" className="hover:opacity-60 transition">Platform</a>
+          <a href="#statement" className="hover:opacity-60 transition">Solutions</a>
+          <a href="#split" className="hover:opacity-60 transition">Operations</a>
           <button
-            onClick={() => { setAuthTab('presets'); setAuthDrawerOpen(true); }}
-            className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-black/15 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/5 font-sans font-semibold text-xs text-[#0b0f19] dark:text-white transition cursor-pointer"
+            onClick={() => setShowContractModal(true)}
+            className="hover:opacity-60 transition cursor-pointer"
           >
-            <Users size={13} className="text-purple-500" />
-            <span>Role Presets</span>
+            Security &amp; MSA
           </button>
+        </nav>
 
-          {/* Sign In CTA */}
+        {/* Right: Login & Animated Popping Pill */}
+        <div className="flex items-center">
           <button
             onClick={() => { setAuthTab('signin'); setAuthDrawerOpen(true); }}
-            className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full bg-[#fce7f3] dark:bg-[#be185d]/30 text-[#be185d] dark:text-pink-300 hover:bg-[#fbcfe8] dark:hover:bg-[#be185d]/50 font-semibold text-xs transition cursor-pointer shadow-xs"
+            className="text-[14px] font-medium text-[#0b1d3a] px-3.5 hover:opacity-60 transition cursor-pointer"
           >
-            <span>Sign In to BMS</span>
-            <ArrowRight size={12} className="-rotate-45" />
+            Login
           </button>
 
-          {/* Mode Switcher */}
-          <button
-            onClick={onToggleDarkMode}
-            className="p-2 rounded-full border border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/5 text-xs text-slate-600 dark:text-slate-300 transition cursor-pointer"
-            title="Toggle color theme"
-          >
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
+          {/* Nav CTA Wrapper (Pops in as dot, stretches into full pill) */}
+          <div className="navcta-wrapper">
+            <button
+              onClick={() => { setAuthTab('presets'); setAuthDrawerOpen(true); }}
+              className="group relative inline-flex items-center h-[42px] px-4.5 pl-4 pr-11 rounded-full bg-[#0b1d3a] text-white text-[13.5px] font-medium tracking-tight whitespace-nowrap cursor-pointer"
+            >
+              <span className="navcta-lbl">Get a demo</span>
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-[#2fe0d0] shadow-[0_0_10px_rgba(47,224,208,0.7)] group-hover:w-8 group-hover:h-8 group-hover:right-1 group-hover:shadow-none transition-all duration-300 flex items-center justify-center">
+                <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 text-[#0b1d3a] transition-all duration-300" />
+              </span>
+            </button>
+          </div>
         </div>
       </header>
 
       {/* ---------------------------------------------------- */}
-      {/* 2. HERO SECTION (100% STAT6 BMS COPY & STYLE)       */}
+      {/* 2. SCENE 1: HERO SECTION                             */}
       {/* ---------------------------------------------------- */}
-      <main id="overview" className="flex-1 w-full max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-20 py-10 sm:py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-start">
+      <section id="hero" className="relative min-h-[max(100vh,640px)] z-10 overflow-hidden">
+        
+        {/* Dynamic Revealing Headline */}
+        <h1
+          ref={h1Ref}
+          className="absolute top-[21.5vh] left-[clamp(20px,5.7vw,82px)] font-normal text-[clamp(34px,4.65vw,70px)] leading-[1.03] tracking-[-0.035em] text-[#0b1d3a] whitespace-nowrap z-2"
+        >
+          Meet <span className="hl">STAT6 BMS</span>, your AI teammate<br />
+          where we shall collaborate
+        </h1>
+
+        {/* Trust line */}
+        <p className="absolute top-[58vh] left-[clamp(20px,5.7vw,82px)] text-[clamp(15px,1.28vw,19px)] tracking-[-0.015em] text-[#1d2f4f] z-2">
+          Port operators and global enterprises trust STAT6 BMS
+        </p>
+
+        {/* Large "Get a demo" Button with Signature Dot-to-Arrow Effect */}
+        <div className="absolute bottom-[7.5vh] left-[clamp(20px,5.7vw,82px)] z-2">
+          <button
+            onClick={() => { setAuthTab('signin'); setAuthDrawerOpen(true); }}
+            className="group relative inline-flex items-center h-[62px] pl-7 pr-16 rounded-full bg-[#0b1d3a] text-white text-[17px] font-medium tracking-tight whitespace-nowrap shadow-md cursor-pointer hover:bg-black transition"
+          >
+            <span>Get a demo</span>
+            <span className="absolute right-6 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-[#2fe0d0] shadow-[0_0_10px_rgba(47,224,208,0.7)] group-hover:w-12 group-hover:h-12 group-hover:right-1.5 group-hover:shadow-none transition-all duration-300 flex items-center justify-center">
+              <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 text-[#0b1d3a] transition-all duration-300" />
+            </span>
+          </button>
+        </div>
+
+        {/* 4×2 Grid of Fictional Partner Wordmarks */}
+        <div className="absolute right-0 w-full lg:w-1/2 top-[55vh] bottom-0 grid grid-cols-2 sm:grid-cols-4 grid-rows-2 z-2 border-t border-[#0b1d3a]/5 sm:border-t-0">
           
-          {/* LEFT COLUMN: STAT6 BMS HERO COPY & VALUE PROPOSITION */}
-          <div className="lg:col-span-6 flex flex-col items-start text-left pt-2">
-            
-            {/* Top Announcement Pill */}
+          {/* 1. OCEANEX */}
+          <div className="flex items-center justify-center border-l border-[#0b1d3a]/10 px-3">
+            <div className="flex items-center gap-2 text-[#3e4d68] font-bold text-[13px] tracking-[0.06em]">
+              <svg width="20" height="20" viewBox="0 0 20 20">
+                <path d="M2 7.5c2.5-1.8 5-1.8 7.5 0s5 1.8 7.5 0M2 12.5c2.5-1.8 5-1.8 7.5 0s5 1.8 7.5 0" fill="none" stroke="#3e4d68" strokeWidth="2.4" strokeLinecap="round"/>
+              </svg>
+              <span>OCEANEX</span>
+            </div>
+          </div>
+
+          {/* 2. Nordhavn (Georgia Serif) */}
+          <div className="flex items-center justify-center border-l border-[#0b1d3a]/10 px-3">
+            <span style={{ fontFamily: 'Georgia, serif' }} className="font-bold italic text-[15px] text-[#3e4d68] tracking-wide">
+              Nordhavn
+            </span>
+          </div>
+
+          {/* 3. BLUEGATE */}
+          <div className="flex items-center justify-center border-l border-[#0b1d3a]/10 px-3">
+            <div className="flex items-center gap-2 text-[#3e4d68] font-bold text-[13px] tracking-[0.06em]">
+              <svg width="18" height="20" viewBox="0 0 18 20" fill="#3e4d68">
+                <rect x="0" y="8" width="4" height="10" rx="1"/>
+                <rect x="7" y="3" width="4" height="15" rx="1"/>
+                <rect x="14" y="6" width="4" height="12" rx="1"/>
+              </svg>
+              <span>BLUEGATE</span>
+            </div>
+          </div>
+
+          {/* 4. KELPWAY */}
+          <div className="flex items-center justify-center border-l border-[#0b1d3a]/10 px-3">
+            <div className="flex items-center gap-2 text-[#3e4d68] font-medium text-[11px] tracking-[0.32em]">
+              <svg width="18" height="18" viewBox="0 0 18 18">
+                <polygon points="9,2 17,16 1,16" fill="none" stroke="#3e4d68" strokeWidth="1.8" strokeLinejoin="round"/>
+              </svg>
+              <span>KELPWAY</span>
+            </div>
+          </div>
+
+          {/* 5. TIDELINE */}
+          <div className="flex items-center justify-center border-l border-t border-[#0b1d3a]/10 px-3">
+            <div className="border-2 border-[#3e4d68] rounded px-2 py-0.5 text-[#3e4d68] font-black text-[14px] tracking-tight">
+              TIDELINE
+            </div>
+          </div>
+
+          {/* 6. HARBORIX */}
+          <div className="flex items-center justify-center border-l border-t border-[#0b1d3a]/10 px-3">
+            <div className="flex items-center gap-2 text-[#3e4d68] font-bold text-[13px] tracking-[0.06em]">
+              <svg width="18" height="18" viewBox="0 0 18 18">
+                <path d="M4 2v14M14 2v14M4 9h10" stroke="#3e4d68" strokeWidth="3" strokeLinecap="square"/>
+              </svg>
+              <span>HARBORIX</span>
+            </div>
+          </div>
+
+          {/* 7. seaflux */}
+          <div className="flex items-center justify-center border-l border-t border-[#0b1d3a]/10 px-3">
+            <div className="flex items-center gap-2 text-[#3e4d68] font-medium text-[15px] lowercase">
+              <svg width="18" height="18" viewBox="0 0 18 18">
+                <circle cx="9" cy="9" r="7" fill="none" stroke="#3e4d68" strokeWidth="1.8"/>
+                <circle cx="9" cy="9" r="2.2" fill="#3e4d68"/>
+              </svg>
+              <span>seaflux</span>
+            </div>
+          </div>
+
+          {/* 8. PORTERRA */}
+          <div className="flex items-center justify-center border-l border-t border-[#0b1d3a]/10 px-3">
+            <div className="flex items-center gap-2 text-[#3e4d68] font-bold text-[11px] tracking-[0.24em]">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="#3e4d68">
+                <polygon points="9,3 17,16 1,16"/>
+              </svg>
+              <span>PORTERRA</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------- */}
+      {/* 3. SCENE 2: PINNED STATEMENT SECTION                 */}
+      {/* ---------------------------------------------------- */}
+      <section id="statement" className="relative h-[306vh] -mt-[31vh] pointer-events-none z-10">
+        <div className="sticky top-0 h-screen overflow-hidden flex items-center justify-center">
+          <p
+            ref={stmtRef}
+            className="absolute top-[41.5vh] left-0 right-0 text-center font-normal text-[clamp(20px,2.8vw,42px)] leading-[1.16] tracking-[-0.03em] text-[#0b1d3a] whitespace-nowrap will-change-transform px-6"
+          >
+            STAT6 BMS is your AI teammate <br />
+            that tracks vessels, books berths, reconciles invoices, <br />
+            coordinates logistics, and ensures we shall collaborate <br />
+            to keep every port and enterprise moving forward
+          </p>
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------- */}
+      {/* 4. SCENE 3: DARK SPLIT WITH CONTAINER SHIP PHOTO     */}
+      {/* ---------------------------------------------------- */}
+      <section
+        ref={splitRef}
+        id="split"
+        className="relative z-20 bg-[#0e1f3d] text-white min-h-screen grid grid-cols-1 lg:grid-cols-[58.3%_41.7%] overflow-hidden"
+      >
+        {/* Left Column (58.3%) */}
+        <div className="relative pl-[clamp(20px,5.7vw,82px)] pb-[8vh] pr-6 lg:pr-12">
+          {/* Vertical Guide Line */}
+          <div className="absolute left-[clamp(20px,5.7vw,82px)] top-0 bottom-0 w-[1px] bg-white/[0.12]"></div>
+
+          {/* Headline Revealing Letter by Letter */}
+          <h2
+            ref={h2Ref}
+            className="font-normal text-[clamp(32px,3.15vw,48px)] leading-[1.08] tracking-[-0.03em] pt-[21vh] pl-[6.2vw] text-white"
+          >
+            AI teammate that operates<br />like you work
+          </h2>
+
+          {/* Ruled Row that fades up */}
+          <div
+            ref={rowRef}
+            className="mt-[6.4vh] border-t border-white/[0.12] grid grid-cols-1 md:grid-cols-[1fr_1.05fr] gap-6 pt-[3vh] pl-[6.2vw] pr-[6vw] transition-all duration-900 opacity-0 translate-y-3.5"
+          >
+            <h3 className="font-normal text-[clamp(17px,1.4vw,21px)] tracking-tight text-white">
+              Port &amp; Enterprise Operators
+            </h3>
+            <p className="text-[clamp(13px,1.1vw,16px)] leading-[1.38] text-white/50 max-w-[20em]">
+              <strong className="text-white font-medium">Berth faster. Reconcile ledger. Stop chasing manifests.</strong>{' '}
+              STAT6 BMS runs scheduling, bookings, customs filings, ERP synchronization, and automated approvals — so your team stays focused on throughput, governance, and collaboration.
+            </p>
+          </div>
+
+          {/* Quick Launch Buttons on Dark Panel */}
+          <div className="pt-12 pl-[6.2vw] flex flex-wrap items-center gap-3">
             <button
-              onClick={() => { setAuthTab('signup'); setAuthDrawerOpen(true); }}
-              className="group inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/15 bg-white/90 dark:bg-white/5 px-3.5 py-1 font-mono text-xs text-[#0b0f19] dark:text-white/85 hover:border-black/25 dark:hover:border-white/30 transition shadow-xs cursor-pointer"
+              onClick={() => { setAuthTab('signin'); setAuthDrawerOpen(true); }}
+              className="px-6 py-3 rounded-full bg-[#2fe0d0] hover:bg-[#25c4b5] text-[#0b1d3a] font-semibold text-xs tracking-tight transition cursor-pointer flex items-center gap-2 shadow-lg"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="font-brand font-semibold text-[13px] tracking-wide">STAT6</span>
-              <span className="font-semibold px-1 py-0.2 rounded bg-black/5 dark:bg-white/10 text-[10.5px]">BMS v2.4</span>
-              <span className="text-[#0b0f19]/60 dark:text-white/60">Sovereign Business Operating System</span>
-              <ArrowRight size={13} className="text-[#0b0f19]/50 dark:text-white/50 group-hover:translate-x-0.5 transition-transform" />
+              <span>Launch STAT6 BMS Workspace</span>
+              <ArrowRight size={14} />
             </button>
 
-            {/* Signature H1 Headline with exact font-display, leading, and colors */}
-            <h1 className="mt-8 font-display text-4xl sm:text-5xl lg:text-[58px] xl:text-[64px] font-semibold leading-[1.04] tracking-[-0.04em] text-[#0b0f19] dark:text-white">
-              <span className="block">One sovereign</span>
-              <span className="block">operating system</span>
-              <span className="block">
-                replacing <span className="text-[#ec4899] font-bold">14 tools</span>
-              </span>
-              <span className="block">with private AI</span>
-              <span className="block">
-                and <span className="text-[#2563eb] font-bold">strict RBAC.</span>
-              </span>
-            </h1>
-
-            {/* Subtitle paragraph in clean font-sans */}
-            <p className="mt-6 max-w-[520px] text-[15px] sm:text-[16.5px] text-[#0b0f19]/70 dark:text-white/70 font-sans leading-relaxed">
-              <span className="font-brand font-bold text-[#0b0f19] dark:text-white">STAT6 BMS</span> is an enterprise business management system. We unify Commercial CRM, Finance &amp; Double-Entry Ledger, HR &amp; Payroll, Jira Agile Sprints, Inventory, and Free External Portals into a self-hosted private architecture with zero 3rd-party data leakage.
-            </p>
-
-            {/* Feature Pills Matching BMS Modules */}
-            <div className="flex flex-wrap items-center gap-2 pt-6">
-              {[
-                { label: 'Commercial CRM', color: 'bg-[#ec4899]' },
-                { label: 'Finance & Invoices', color: 'bg-[#2563eb]' },
-                { label: 'Jira Agile Sprints', color: 'bg-[#0284c7]' },
-                { label: 'HR & Payroll', color: 'bg-[#10b981]' },
-                { label: 'Supply Chain & POs', color: 'bg-[#f59e0b]' },
-                { label: '7 RBAC Portals', color: 'bg-[#8b5cf6]' }
-              ].map(tag => (
-                <div
-                  key={tag.label}
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 text-xs font-sans font-medium text-[#0b0f19] dark:text-white shadow-xs"
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${tag.color}`}></span>
-                  <span>{tag.label}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Direct BMS Portal Launch CTAs */}
-            <div className="flex flex-wrap items-center gap-3.5 pt-8">
-              <button
-                onClick={() => { setAuthTab('signin'); setAuthDrawerOpen(true); }}
-                className="px-6 py-3 rounded-full bg-[#0b0f19] hover:bg-black text-white dark:bg-white dark:text-black dark:hover:bg-slate-200 font-sans font-semibold text-xs tracking-tight transition cursor-pointer flex items-center gap-2 shadow-md"
-              >
-                <span>Launch Enterprise BMS Workspace</span>
-                <ArrowRight size={14} />
-              </button>
-
-              <button
-                onClick={() => { setAuthTab('presets'); setAuthDrawerOpen(true); }}
-                className="px-5 py-3 rounded-full border border-black/15 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/5 text-xs font-sans font-semibold text-[#0b0f19] dark:text-white transition cursor-pointer flex items-center gap-1.5"
-              >
-                <span>1-Click Role Presets (7 Roles)</span>
-                <Users size={14} className="text-purple-500" />
-              </button>
-
-              <button
-                onClick={() => setShowContractModal(true)}
-                className="px-4 py-3 text-xs font-sans font-medium text-slate-500 dark:text-slate-400 hover:text-[#0b0f19] dark:hover:text-white transition cursor-pointer flex items-center gap-1"
-              >
-                <FileText size={13} />
-                <span>View Legal MSA Contract</span>
-              </button>
-            </div>
-
+            <button
+              onClick={() => { setAuthTab('presets'); setAuthDrawerOpen(true); }}
+              className="px-5 py-3 rounded-full border border-white/20 hover:bg-white/10 text-xs font-semibold text-white transition cursor-pointer flex items-center gap-1.5"
+            >
+              <Users size={13} className="text-[#2fe0d0]" />
+              <span>1-Click Role Presets (7 Roles)</span>
+            </button>
           </div>
-
-          {/* RIGHT COLUMN: STAT6 BMS WORKSPACE MOCKUP */}
-          <div className="lg:col-span-6 w-full flex justify-center lg:justify-end">
-            <div className="w-full max-w-[580px] rounded-3xl border border-black/[0.08] dark:border-white/[0.12] bg-white/70 dark:bg-[#0e1424]/70 backdrop-blur-xl shadow-[0_24px_70px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.06)] overflow-hidden">
-              
-              {/* Window Title Bar */}
-              <div className="px-4 py-3 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f8fafc]/80 dark:bg-[#070b14]/80">
-                {/* Traffic Light Window Controls */}
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#f87171]"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#fbbf24]"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#34d399]"></div>
-                </div>
-
-                {/* Address Bar Pill: 🔒 bms.stat6.enterprise × unified workspace */}
-                <div className="px-3 py-1 rounded-full bg-white dark:bg-white/10 border border-black/5 dark:border-white/10 text-[11px] font-mono text-slate-600 dark:text-slate-300 flex items-center gap-1.5 shadow-2xs">
-                  <Lock size={10} className="text-emerald-500" />
-                  <span>bms.stat6.enterprise × unified workspace</span>
-                </div>
-
-                <div className="w-10"></div>
-              </div>
-
-              {/* Window Body: 2 BMS Live Cards */}
-              <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-                
-                {/* CARD 1: ENTERPRISE OPERATIONS & TELEMETRY */}
-                <div className="relative rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#11192e] p-4 flex flex-col justify-between shadow-xs">
-                  
-                  {/* Handwritten Callout: Replaces 14 SaaS tools */}
-                  <div className="absolute -top-3.5 right-2 z-10">
-                    <span className="font-hand text-[#ec4899] font-bold text-[20px] rotate-[-5deg] inline-block tracking-normal select-none">
-                      Replaces 14 SaaS tools
-                    </span>
-                  </div>
-
-                  <div>
-                    {/* Header Label: ENTERPRISE OPERATIONS */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-mono text-[9.5px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1">
-                        <Layers size={11} />
-                        ENTERPRISE OPERATIONS
-                      </span>
-                      <span className="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-semibold">
-                        14 SERVICES UP
-                      </span>
-                    </div>
-
-                    {/* Commercial & Ops Header + Live Pill */}
-                    <div className="flex items-center justify-between mt-2 mb-3">
-                      <span className="font-display font-semibold text-lg text-[#0b0f19] dark:text-white">
-                        Platform Telemetry
-                      </span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-sans text-[10.5px] font-semibold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Live
-                      </span>
-                    </div>
-
-                    {/* Metric Row */}
-                    <div className="grid grid-cols-3 gap-2 py-2 border-y border-black/[0.04] dark:border-white/[0.06] font-sans">
-                      <div>
-                        <div className="text-[9.5px] font-mono text-slate-400 uppercase">Revenue Paid</div>
-                        <div className="font-display font-bold text-sm text-[#0b0f19] dark:text-white">$1.24M</div>
-                      </div>
-                      <div>
-                        <div className="text-[9.5px] font-mono text-slate-400 uppercase">Open POs</div>
-                        <div className="font-display font-bold text-sm text-[#0b0f19] dark:text-white">48</div>
-                      </div>
-                      <div>
-                        <div className="text-[9.5px] font-mono text-slate-400 uppercase">Uptime SLA</div>
-                        <div className="font-display font-bold text-sm text-emerald-600 dark:text-emerald-400">99.95%</div>
-                      </div>
-                    </div>
-
-                    {/* Electric Blue Wave SVG Sparkline */}
-                    <div className="py-2.5">
-                      <svg viewBox="0 0 100 24" className="w-full h-8 overflow-visible">
-                        <defs>
-                          <linearGradient id="blueGlow" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.3" />
-                            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
-                          </linearGradient>
-                        </defs>
-                        <path
-                          d="M0 18 Q 20 16, 40 12 T 70 8 T 100 4 L 100 24 L 0 24 Z"
-                          fill="url(#blueGlow)"
-                        />
-                        <path
-                          d="M0 18 Q 20 16, 40 12 T 70 8 T 100 4"
-                          fill="none"
-                          stroke="#2563eb"
-                          strokeWidth="2"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* Bottom Real-time Microservice Status */}
-                  <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-black/[0.05] dark:border-white/[0.06] space-y-1.5 text-[11px] font-sans">
-                    <div className="flex items-center justify-between font-mono text-[9.5px] text-slate-400">
-                      <span className="font-semibold text-pink-600 dark:text-pink-400">BMS ENGINE</span>
-                      <span className="flex items-center gap-1 text-emerald-600">
-                        <span className="w-1 h-1 rounded-full bg-emerald-500"></span> active
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 text-[10.5px]">
-                      <span className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-[9px] font-bold">✓</span>
-                      <span>Reconciled $84,200 Invoice Journal</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 text-[10.5px]">
-                      <span className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-[9px] font-bold">✓</span>
-                      <span>Enforced Vendor Portal RBAC Policy</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 text-[10.5px]">
-                      <span className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-[9px] font-bold">✓</span>
-                      <span>Synced Jira Velocity to Agile Sprint 8</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CARD 2: GROQ AGENTIC COPILOT • LIVE */}
-                <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#11192e] p-4 flex flex-col justify-between shadow-xs">
-                  <div>
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-mono text-[9.5px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1">
-                        <Bot size={11} className="text-purple-500" />
-                        STAT6 COPILOT • REALTIME
-                      </span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-sans text-[10.5px] font-semibold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Live
-                      </span>
-                    </div>
-
-                    {/* User Prompt Bubble in Dark Navy */}
-                    <div className="p-3 rounded-xl bg-[#0b0f19] dark:bg-[#070b14] text-white text-[12px] font-sans font-medium leading-snug mb-3 shadow-xs">
-                      "Reconcile Q4 invoices, compile general ledger, and trigger manager approval."
-                    </div>
-
-                    {/* Assistant Response Box */}
-                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#162340]/60 border border-black/[0.05] dark:border-white/[0.06] space-y-2">
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#ec4899]">
-                        <span className="w-2 h-2 rounded-full bg-[#ec4899]"></span>
-                        <span>BMS Copilot</span>
-                      </div>
-                      <p className="text-[11.5px] text-slate-700 dark:text-slate-200 font-sans leading-snug">
-                        Done. Reconciled 14 journal entries, confirmed <span className="px-1 py-0.2 rounded bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 font-semibold font-mono text-[10.5px]">$84,200</span> accounts payable, drafted balance statement, and queued Department Manager approval <span className="px-1 py-0.2 rounded bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 font-semibold font-mono text-[10.5px]">#APP-104</span>.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Step Completion Timings */}
-                  <div className="mt-3 pt-2 border-t border-black/[0.04] dark:border-white/[0.06] space-y-1.5 text-[10.5px] font-sans">
-                    <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Cryptographic ledger audit hash verified
-                      </span>
-                      <span className="font-mono text-slate-400 text-[10px]">0.2s</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Department Manager RBAC scope enforced
-                      </span>
-                      <span className="font-mono text-slate-400 text-[10px]">0.5s</span>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Bottom Quick Test Bar */}
-              <div className="px-5 py-3 border-t border-black/[0.06] dark:border-white/[0.08] bg-[#f8fafc]/90 dark:bg-[#070b14]/90 flex items-center justify-between text-xs">
-                <span className="font-mono text-[11px] text-slate-500 flex items-center gap-1.5">
-                  <ShieldCheck size={13} className="text-emerald-500" />
-                  Self-Contained In-House OAuth 2.0 &amp; RBAC
-                </span>
-
-                <button
-                  onClick={() => { setAuthTab('signin'); setAuthDrawerOpen(true); }}
-                  className="font-sans font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <span>Sign In Now</span>
-                  <ChevronRight size={13} />
-                </button>
-              </div>
-
-            </div>
-          </div>
-
         </div>
 
-        {/* ---------------------------------------------------- */}
-        {/* 3. 14 UNIFIED BMS MODULES SHOWCASE SECTION           */}
-        {/* ---------------------------------------------------- */}
-        <section id="modules" className="pt-20 sm:pt-28 text-left">
-          <div className="flex flex-col items-start gap-2 mb-10">
-            <span className="font-mono text-xs uppercase text-slate-400 font-bold tracking-wider">
-              ✦ UNIFIED ARCHITECTURE
-            </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-[-0.035em] text-[#0b0f19] dark:text-white">
-              All 14 Business Modules in One Sovereign Ecosystem
-            </h2>
-            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl font-sans">
-              No multiple subscriptions, no fragmented APIs, and zero third-party cloud vulnerabilities. Everything operates under a shared PostgreSQL schema with strict RBAC boundary checks.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {bmsModules.map(mod => {
-              const Icon = mod.icon;
-              return (
-                <div
-                  key={mod.id}
-                  className="p-4 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#11192e] hover:border-black/20 dark:hover:border-white/20 transition-all shadow-xs group"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center">
-                      <Icon size={16} className={mod.color} />
-                    </div>
-                    <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
-                      Module
-                    </span>
-                  </div>
-                  <h3 className="font-display font-semibold text-sm text-[#0b0f19] dark:text-white mb-1 tracking-tight">
-                    {mod.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug font-sans">
-                    {mod.desc}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ---------------------------------------------------- */}
-        {/* 4. 7 RBAC ROLES & EXTERNAL PORTALS SECTION           */}
-        {/* ---------------------------------------------------- */}
-        <section id="portals" className="pt-20 sm:pt-28 text-left">
-          <div className="flex flex-col items-start gap-2 mb-10">
-            <span className="font-mono text-xs uppercase text-slate-400 font-bold tracking-wider">
-              ✦ CRYPTOGRAPHIC RBAC
-            </span>
-            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-[-0.035em] text-[#0b0f19] dark:text-white">
-              7 Dedicated Roles &amp; Zero-Trust External Portals
-            </h2>
-            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl font-sans">
-              Credentials determine the workspace directly at authentication. No in-app switcher to compromise governance boundaries.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {personaCards.map(card => (
-              <div
-                key={card.persona}
-                className="p-5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#11192e] flex flex-col justify-between shadow-xs"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 font-semibold">
-                      {card.badge}
-                    </span>
-                    <span className="font-mono text-[10px] text-emerald-500 font-bold">
-                      RBAC Verified
-                    </span>
-                  </div>
-                  <h3 className="font-display font-semibold text-base text-[#0b0f19] dark:text-white mb-1.5">
-                    {card.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans mb-3">
-                    {card.desc}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handlePresetSelect(card)}
-                  disabled={isLoading}
-                  className="mt-2 w-full py-2 rounded-xl border border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 font-sans font-semibold text-xs text-[#0b0f19] dark:text-white transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span>1-Click Login</span>
-                  <ArrowRight size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-
-      </main>
-
-      {/* ---------------------------------------------------- */}
-      {/* 5. FOOTER                                            */}
-      {/* ---------------------------------------------------- */}
-      <footer className="mt-20 border-t border-black/[0.06] dark:border-white/[0.08] py-8 px-6 sm:px-12 xl:px-20 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-sans gap-4">
-        <div className="flex items-center gap-2">
-          <span className="font-brand font-bold text-lg text-[#0b0f19] dark:text-white">STAT6</span>
-          <span className="font-brand font-semibold text-sm text-[#2563eb]">BMS</span>
-          <span className="text-slate-400">· Sovereign Business Operating System</span>
+        {/* Right Column (41.7%): Aerial Container Ship in Norwegian Fjord Photo */}
+        <div className="relative overflow-hidden min-h-[500px] lg:min-h-screen">
+          <img
+            ref={shipRef}
+            id="ship"
+            src="https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20261029_050506_a830ff21-4c71-4272-bc39-b61cacb54463.png&w=1400&q=85"
+            alt="Aerial view of a container ship sailing up a misty fjord"
+            className="absolute inset-0 w-full h-full object-cover origin-[50%_60%] will-change-transform block"
+          />
         </div>
-
-        <div className="flex items-center gap-6">
-          <button onClick={() => setShowContractModal(true)} className="hover:underline cursor-pointer">
-            Master Services Agreement (MSA)
-          </button>
-          <button onClick={() => setShowContractModal(true)} className="hover:underline cursor-pointer">
-            Data Processing Addendum (DPA)
-          </button>
-          <span className="font-mono text-[11px]">v2.4 Enterprise Edition</span>
-        </div>
-      </footer>
+      </section>
 
       {/* ---------------------------------------------------- */}
-      {/* 6. NATIVE OAUTH & RBAC AUTH DRAWER / MODAL           */}
+      {/* 5. NATIVE OAUTH & RBAC AUTH DRAWER / MODAL           */}
       {/* ---------------------------------------------------- */}
       {authDrawerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
@@ -1124,7 +1230,7 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
       )}
 
       {/* ---------------------------------------------------- */}
-      {/* 7. MASTER SERVICES AGREEMENT (MSA) LEGAL CONTRACT MODAL */}
+      {/* 6. MASTER SERVICES AGREEMENT (MSA) LEGAL CONTRACT MODAL */}
       {/* ---------------------------------------------------- */}
       {showContractModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">

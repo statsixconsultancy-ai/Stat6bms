@@ -111,6 +111,43 @@
   background: #334155;
 }
 
+/* Bowl Glow & Navbar Pill Animations */
+.navcta-wrapper {
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  border-radius: 999px;
+  margin-left: -42px;
+  transform: scale(0);
+  transform-origin: 100% 50%;
+  transition: transform .35s cubic-bezier(.22, .7, .2, 1), width .65s cubic-bezier(.22, .7, .2, 1) .22s, margin .35s cubic-bezier(.22, .7, .2, 1);
+}
+
+.nav-expanded .navcta-wrapper {
+  width: 142px;
+  margin-left: 16px;
+  transform: scale(1);
+}
+
+.navcta-lbl {
+  opacity: 0;
+  transition: opacity .4s ease .45s;
+}
+
+.nav-expanded .navcta-lbl {
+  opacity: 1;
+}
+
+.word-wrap {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.char {
+  display: inline-block;
+  transition: color .15s linear;
+}
+
 @keyframes toastTimerProgress {
   from {
     width: 100%;

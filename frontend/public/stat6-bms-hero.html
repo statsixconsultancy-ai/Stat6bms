@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STAT6 BMS — We Shall Collaborate</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #0b1d3a;          /* headline navy, button fill */
+      --ink-2: #1d2f4f;        /* trust line */
+      --accent: #5b7cf0;       /* "STAT6 BMS" highlight, brand mark */
+      --dot: #2fe0d0;          /* button dot / arrow circle */
+      --panel: #0e1f3d;        /* dark split panel */
+      --panel-line: rgba(255, 255, 255, .12);
+      --gut: clamp(20px, 5.7vw, 82px);    /* page gutter */
+      --ease: cubic-bezier(.22, .7, .2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      background: #fff;
+      color: var(--ink);
+      font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* Fixed Canvas Background Container */
+    .atmo {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: #fff;
+    }
+
+    #bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: auto;
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ---------------------------------------------------- */
+    /* 1. FIXED PILL NAVBAR                                 */
+    /* ---------------------------------------------------- */
+    .nav {
+      position: fixed;
+      z-index: 50;
+      top: 20px;
+      left: var(--gut);
+      right: var(--gut);
+      height: 60px;
+      border-radius: 999px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px 0 22px;
+      box-shadow: 0 1px 0 rgba(11, 29, 58, .04), 0 10px 30px -18px rgba(11, 29, 58, .25);
+      opacity: 0;
+      transform: translateY(-8px);
+      animation: navin .9s var(--ease) .15s forwards;
+    }
+
+    @keyframes navin {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -.02em;
+      color: var(--ink);
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .brand-title span.bms-tag {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: .02em;
+    }
+
+    .brand-tagline {
+      font-size: 10.5px;
+      color: #71829e;
+      font-weight: 500;
+      letter-spacing: -.005em;
+      padding-left: 4px;
+      border-left: 1px solid rgba(11, 29, 58, .12);
+      margin-left: 4px;
+      display: inline-block;
+    }
+
+    .nav-links {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 31px;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: -.005em;
+      color: var(--ink);
+      opacity: .92;
+      transition: opacity .2s;
+    }
+
+    .nav-links a:hover {
+      opacity: .55;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+    }
+
+    .nav-login {
+      font-size: 14px;
+      font-weight: 500;
+      padding: 0 14px;
+      cursor: pointer;
+      color: var(--ink);
+      transition: opacity .2s;
+    }
+
+    .nav-login:hover {
+      opacity: .65;
+    }
+
+    .nav.on .nav-login {
+      padding-right: 0;
+    }
+
+    .navcta {
+      width: 42px;
+      height: 42px;
+      overflow: hidden;
+      border-radius: 999px;
+      margin-left: -42px;
+      transform: scale(0);
+      transform-origin: 100% 50%;
+      transition: transform .35s var(--ease), width .65s var(--ease) .22s, margin .35s var(--ease);
+    }
+
+    .nav.on .navcta {
+      width: 142px;
+      margin-left: 16px;
+      transform: scale(1);
+    }
+
+    .navcta .btn {
+      width: 142px;
+    }
+
+    .navcta .lbl {
+      opacity: 0;
+      transition: opacity .4s ease .45s;
+    }
+
+    .nav.on .navcta .lbl {
+      opacity: 1;
+    }
+
+    /* ---------------------------------------------------- */
+    /* 2. BUTTONS (DOT TO ARROW HOVER EFFECT)               */
+    /* ---------------------------------------------------- */
+    .btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      height: 42px;
+      padding: 0 46px 0 18px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 13.5px;
+      font-weight: 500;
+      letter-spacing: -.01em;
+      white-space: nowrap;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      user-select: none;
+      text-decoration: none;
+    }
+
+    .btn .dot {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--dot);
+      box-shadow: 0 0 10px rgba(47, 224, 208, .7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: width .45s var(--ease), height .45s var(--ease), right .45s var(--ease), box-shadow .3s ease;
+    }
+
+    .btn .dot svg {
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity .3s ease .05s, transform .35s var(--ease) .05s;
+      stroke: var(--ink);
+    }
+
+    .btn:hover .dot {
+      width: 32px;
+      height: 32px;
+      right: 5px;
+      box-shadow: none;
+    }
+
+    .btn:hover .dot svg {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Large Button Variant (Hero) */
+    .btn.lg {
+      height: 62px;
+      padding: 0 62px 0 28px;
+      font-size: 17px;
+    }
+
+    .btn.lg .dot {
+      width: 14px;
+      height: 14px;
+      right: 24px;
+    }
+
+    .btn.lg:hover .dot {
+      width: 48px;
+      height: 48px;
+      right: 7px;
+    }
+
+    /* ---------------------------------------------------- */
+    /* 3. HERO SECTION (100VH, MIN 640PX)                   */
+    /* ---------------------------------------------------- */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      min-height: max(100vh, 640px);
+      overflow: hidden;
+    }
+
+    .hero h1#h1 {
+      position: absolute;
+      top: 21.5vh;
+      left: var(--gut);
+      font-weight: 400;
+      font-size: clamp(34px, 4.65vw, 70px);
+      line-height: 1.03;
+      letter-spacing: -.035em;
+      white-space: nowrap;
+      color: var(--ink);
+      z-index: 2;
+    }
+
+    .hero .trust {
+      position: absolute;
+      top: 58vh;
+      left: var(--gut);
+      font-size: clamp(15px, 1.28vw, 19px);
+      letter-spacing: -.015em;
+      color: var(--ink-2);
+      z-index: 2;
+    }
+
+    .hero .hero-cta {
+      position: absolute;
+      bottom: 7.5vh;
+      left: var(--gut);
+      z-index: 2;
+    }
+
+    /* Logo Grid (4×2) */
+    .logos {
+      position: absolute;
+      right: 0;
+      width: 50%;
+      top: 55vh;
+      bottom: 0;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      z-index: 2;
+    }
+
+    .logo-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      color: #3e4d68;
+      border-left: 1px solid rgba(11, 29, 58, .08);
+      padding: 0 12px;
+    }
+
+    .logo-cell:nth-child(n+5) {
+      border-top: 1px solid rgba(11, 29, 58, .06);
+    }
+
+    .logo-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      user-select: none;
+    }
+
+    .logo-item.georgia-mark {
+      font-family: Georgia, serif;
+      font-weight: bold;
+      font-style: italic;
+      font-size: 15px;
+      letter-spacing: .02em;
+    }
+
+    .logo-item.kelpway {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .32em;
+    }
+
+    .logo-item.tideline-box {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      border: 2px solid #3e4d68;
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+
+    .logo-item.seaflux {
+      font-size: 15px;
+      font-weight: 500;
+      text-transform: lowercase;
+    }
+
+    .logo-item.porterra {
+      font-size: 11px;
+      letter-spacing: .24em;
+    }
+
+    /* Fade-up helper */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+
+    body.ready .fade-up {
+      animation: fu .9s var(--ease) forwards;
+      animation-delay: var(--d);
+    }
+
+    @keyframes fu {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Letter Spans */
+    .word-wrap {
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    .char {
+      display: inline-block;
+      transition: color .15s linear;
+    }
+
+    /* ---------------------------------------------------- */
+    /* 4. STATEMENT SECTION (PINNED 306VH)                  */
+    /* ---------------------------------------------------- */
+    .statement {
+      position: relative;
+      height: 306vh;
+      margin-top: -31vh;
+      pointer-events: none;
+    }
+
+    .statement .pin {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #stmt {
+      position: absolute;
+      top: 41.5vh;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-weight: 400;
+      font-size: clamp(20px, 2.8vw, 42px);
+      line-height: 1.16;
+      letter-spacing: -.03em;
+      color: var(--ink);
+      white-space: nowrap;
+      will-change: transform;
+      padding: 0 var(--gut);
+    }
+
+    /* ---------------------------------------------------- */
+    /* 5. DARK SPLIT SECTION                                */
+    /* ---------------------------------------------------- */
+    .split {
+      position: relative;
+      z-index: 2;
+      background: var(--panel);
+      color: #fff;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 58.3% 41.7%;
+      overflow: hidden;
+    }
+
+    .split .l {
+      position: relative;
+      padding-left: var(--gut);
+      padding-bottom: 8vh;
+    }
+
+    .split .guide-line {
+      position: absolute;
+      left: var(--gut);
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--panel-line);
+    }
+
+    .split h2#h2 {
+      font-weight: 400;
+      font-size: clamp(32px, 3.15vw, 48px);
+      line-height: 1.08;
+      letter-spacing: -.03em;
+      padding: 21vh 0 0 6.2vw;
+      color: #fff;
+    }
+
+    .split #row {
+      margin-top: 6.4vh;
+      border-top: 1px solid var(--panel-line);
+      display: grid;
+      grid-template-columns: 1fr 1.05fr;
+      gap: 24px;
+      padding: 3vh 6vw 0 6.2vw;
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity .9s var(--ease), transform .9s var(--ease);
+    }
+
+    .split #row.on {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .split h3 {
+      font-weight: 400;
+      font-size: clamp(17px, 1.4vw, 21px);
+      letter-spacing: -.01em;
+      color: #fff;
+    }
+
+    .split .row-p {
+      font-size: clamp(13px, 1.1vw, 16px);
+      line-height: 1.38;
+      color: rgba(255, 255, 255, .5);
+      max-width: 20em;
+    }
+
+    .split .row-p strong {
+      color: #fff;
+      font-weight: 500;
+    }
+
+    .split .r {
+      position: relative;
+      overflow: hidden;
+      height: 100%;
+      min-height: 100vh;
+    }
+
+    #ship {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform-origin: 50% 60%;
+      will-change: transform;
+      display: block;
+    }
+
+    /* ---------------------------------------------------- */
+    /* 6. RESPONSIVE (≤ 820PX)                              */
+    /* ---------------------------------------------------- */
+    @media (max-width: 820px) {
+      .nav-links {
+        display: none;
+      }
+      .nav {
+        height: 54px;
+        top: 12px;
+      }
+      .brand-tagline {
+        display: none;
+      }
+      .nav-login {
+        padding: 0 6px;
+      }
+      .nav.on .navcta {
+        margin-left: 8px;
+      }
+      .hero h1#h1 {
+        top: 17vh;
+        font-size: 7.4vw;
+        white-space: normal;
+        padding-right: var(--gut);
+      }
+      .hero .trust {
+        top: 44vh;
+      }
+      .logos {
+        width: 100%;
+        top: 50vh;
+        bottom: 18vh;
+      }
+      .logo-item span {
+        display: none;
+      }
+      .logo-item.tideline-box {
+        display: none;
+      }
+      .hero .hero-cta {
+        bottom: 6vh;
+      }
+      #stmt {
+        white-space: normal;
+        max-width: 15em;
+        font-size: 23px;
+        top: 38vh;
+      }
+      #stmt br {
+        display: none;
+      }
+      .split {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 70vh;
+      }
+      .split h2#h2 {
+        padding: 16vh 0 0 6vw;
+      }
+      .split #row {
+        grid-template-columns: 1fr;
+        padding: 3vh 6vw 6vh;
+      }
+      .split .r {
+        min-height: 70vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background Canvas: Atmospheric 96×60 Bowl Glow Engine -->
+  <div class="atmo">
+    <canvas id="bg" width="96" height="60"></canvas>
+  </div>
+
+  <!-- Floating Fixed Pill Navbar -->
+  <header class="nav" id="nav">
+    <a href="#" class="nav-brand">
+      <svg class="brand-mark" viewBox="0 0 22 22">
+        <circle cx="11" cy="11" r="11" fill="#5b7cf0" />
+        <path d="M5 9.2c2.3-1.6 4.7-1.6 7 0s4.7 1.6 7 0" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
+        <path d="M5 13.2c2.3-1.6 4.7-1.6 7 0s4.7 1.6 7 0" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
+      </svg>
+      <div class="brand-title">
+        STAT6 <span class="bms-tag">BMS</span>
+        <span class="brand-tagline">we shall collaborate</span>
+      </div>
+    </a>
+
+    <nav class="nav-links">
+      <a href="#hero">Platform</a>
+      <a href="#statement">Solutions</a>
+      <a href="#split">Operations</a>
+      <a href="#">Security</a>
+      <a href="#">Resources</a>
+    </nav>
+
+    <div class="nav-right">
+      <span class="nav-login" onclick="alert('Redirecting to STAT6 BMS Native OAuth 2.0 Login Gate')">Login</span>
+      <div class="navcta">
+        <button class="btn" onclick="alert('Launching STAT6 BMS Demo Workspace')">
+          <span class="lbl">Get a demo</span>
+          <span class="dot">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M4.5 2.5 8 6l-3.5 3.5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Scene 1: Hero Section with Bowl Glow -->
+    <section class="hero" id="hero">
+      <h1 id="h1">Meet <span class="hl">STAT6 BMS</span>, your AI teammate<br>where we shall collaborate</h1>
+      
+      <p class="trust fade-up" style="--d:1.15s">Port operators and enterprises trust STAT6 BMS</p>
+
+      <div class="hero-cta fade-up" style="--d:1.3s">
+        <button class="btn lg" onclick="alert('Launching STAT6 BMS Demo Workspace')">
+          <span>Get a demo</span>
+          <span class="dot">
+            <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
+              <path d="M4.5 2.5 8 6l-3.5 3.5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <!-- 4×2 Grid of Fictional Partner Wordmarks -->
+      <div class="logos">
+        <!-- 1. OCEANEX -->
+        <div class="logo-cell fade-up" style="--d:1.25s">
+          <div class="logo-item">
+            <svg width="20" height="20" viewBox="0 0 20 20">
+              <path d="M2 7.5c2.5-1.8 5-1.8 7.5 0s5 1.8 7.5 0M2 12.5c2.5-1.8 5-1.8 7.5 0s5 1.8 7.5 0" fill="none" stroke="#3e4d68" stroke-width="2.4" stroke-linecap="round"/>
+            </svg>
+            <span>OCEANEX</span>
+          </div>
+        </div>
+
+        <!-- 2. Nordhavn (Georgia Serif) -->
+        <div class="logo-cell fade-up" style="--d:1.32s">
+          <div class="logo-item georgia-mark">Nordhavn</div>
+        </div>
+
+        <!-- 3. BLUEGATE -->
+        <div class="logo-cell fade-up" style="--d:1.39s">
+          <div class="logo-item">
+            <svg width="18" height="20" viewBox="0 0 18 20" fill="#3e4d68">
+              <rect x="0" y="8" width="4" height="10" rx="1"/>
+              <rect x="7" y="3" width="4" height="15" rx="1"/>
+              <rect x="14" y="6" width="4" height="12" rx="1"/>
+            </svg>
+            <span>BLUEGATE</span>
+          </div>
+        </div>
+
+        <!-- 4. KELPWAY -->
+        <div class="logo-cell fade-up" style="--d:1.46s">
+          <div class="logo-item kelpway">
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <polygon points="9,2 17,16 1,16" fill="none" stroke="#3e4d68" stroke-width="1.8" stroke-linejoin="round"/>
+            </svg>
+            <span>KELPWAY</span>
+          </div>
+        </div>
+
+        <!-- 5. TIDELINE -->
+        <div class="logo-cell fade-up" style="--d:1.42s">
+          <div class="logo-item tideline-box">TIDELINE</div>
+        </div>
+
+        <!-- 6. HARBORIX -->
+        <div class="logo-cell fade-up" style="--d:1.49s">
+          <div class="logo-item">
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path d="M4 2v14M14 2v14M4 9h10" stroke="#3e4d68" stroke-width="3" stroke-linecap="square"/>
+            </svg>
+            <span>HARBORIX</span>
+          </div>
+        </div>
+
+        <!-- 7. seaflux -->
+        <div class="logo-cell fade-up" style="--d:1.56s">
+          <div class="logo-item seaflux">
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <circle cx="9" cy="9" r="7" fill="none" stroke="#3e4d68" stroke-width="1.8"/>
+              <circle cx="9" cy="9" r="2.2" fill="#3e4d68"/>
+            </svg>
+            <span>seaflux</span>
+          </div>
+        </div>
+
+        <!-- 8. PORTERRA -->
+        <div class="logo-cell fade-up" style="--d:1.63s">
+          <div class="logo-item porterra">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="#3e4d68">
+              <polygon points="9,3 17,16 1,16"/>
+            </svg>
+            <span>PORTERRA</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Scene 2: Pinned Statement Section -->
+    <section class="statement" id="statement">
+      <div class="pin">
+        <p id="stmt">
+          STAT6 BMS is your AI teammate <br>
+          that tracks vessels, books berths, reconciles invoices, <br>
+          coordinates logistics, and ensures we shall collaborate <br>
+          to keep every port and enterprise moving forward
+        </p>
+      </div>
+    </section>
+
+    <!-- Scene 3: Dark Split Section with Container Ship Photo -->
+    <section class="split" id="split">
+      <div class="l">
+        <div class="guide-line"></div>
+        <h2 id="h2">AI teammate that operates<br>like you work</h2>
+
+        <div id="row">
+          <h3>Port & Enterprise Operators</h3>
+          <p class="row-p">
+            <strong>Berth faster. Reconcile ledger. Stop chasing manifests.</strong>
+            STAT6 BMS runs scheduling, bookings, customs filings, ERP synchronization, and automated approvals — so your team stays focused on throughput, governance, and seamless collaboration.
+          </p>
+        </div>
+      </div>
+
+      <div class="r">
+        <img
+          id="ship"
+          src="https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20261029_050506_a830ff21-4c71-4272-bc39-b61cacb54463.png&w=1400&q=85"
+          alt="Aerial view of a container ship sailing up a misty fjord"
+        >
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /* =======================================================
+       1. LETTER REVEAL ENGINE
+       ======================================================= */
+    function splitLetters(el) {
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null, false);
+      const nodes = [];
+      let n;
+      while (n = walker.nextNode()) {
+        if (n.nodeType === 3 || (n.nodeType === 1 && n.tagName === 'BR')) {
+          nodes.push(n);
+        }
+      }
+
+      const charSpans = [];
+      nodes.forEach(node => {
+        if (node.tagName === 'BR') return;
+        const text = node.textContent;
+        const parent = node.parentElement;
+        const isHighlight = parent && parent.classList.contains('hl');
+        
+        // Wrap words to avoid breaking mid-word
+        const words = text.split(/(\s+)/);
+        const frag = document.createDocumentFragment();
+
+        words.forEach(part => {
+          if (/^\s+$/.test(part)) {
+            frag.appendChild(document.createTextNode(part));
+          } else {
+            const wrap = document.createElement('span');
+            wrap.className = 'word-wrap';
+            for (let i = 0; i < part.length; i++) {
+              const ch = part[i];
+              const s = document.createElement('span');
+              s.className = 'char';
+              s.textContent = ch;
+              if (isHighlight) s.dataset.hl = '1';
+              wrap.appendChild(s);
+              charSpans.push(s);
+            }
+            frag.appendChild(wrap);
+          }
+        });
+
+        node.parentNode.replaceChild(frag, node);
+      });
+
+      return charSpans;
+    }
+
+    function clamp(val, min = 0, max = 1) {
+      return Math.min(Math.max(val, min), max);
+    }
+
+    function paintChars(chars, p, spread, finalColor, accentColor, ghostColor) {
+      const n = chars.length;
+      if (!n) return;
+      for (let i = 0; i < n; i++) {
+        const c = chars[i];
+        const isHl = c.dataset.hl === '1';
+        const targetFinal = isHl ? '#5b7cf0' : finalColor;
+        const t = clamp((p * (1 + spread) - (i / n)) / spread);
+
+        if (t <= 0) {
+          c.style.opacity = '0';
+          c.style.color = ghostColor;
+          c.style.filter = 'blur(8px)';
+        } else if (t <= 0.35) {
+          const sub = t / 0.35;
+          c.style.opacity = sub;
+          c.style.color = ghostColor;
+          c.style.filter = `blur(${8 - sub * 6.5}px)`;
+        } else if (t <= 0.70) {
+          const sub = (t - 0.35) / 0.35;
+          c.style.opacity = '1';
+          c.style.color = accentColor;
+          c.style.filter = `blur(${1.5 - sub * 1.5}px)`;
+        } else {
+          c.style.opacity = '1';
+          c.style.color = targetFinal;
+          c.style.filter = 'none';
+        }
+      }
+    }
+
+    const h1Chars = splitLetters(document.getElementById('h1'));
+    const stmtChars = splitLetters(document.getElementById('stmt'));
+    const h2Chars = splitLetters(document.getElementById('h2'));
+
+    // Initial paint at p=0
+    paintChars(h1Chars, 0, 0.35, '#0b1d3a', '#3f7cff', 'rgba(255,255,255,0)');
+    paintChars(stmtChars, 0, 0.16, '#0b1d3a', '#3f7cff', '#ffffff');
+    paintChars(h2Chars, 0, 0.35, '#ffffff', '#8fe6f4', '#5c6f92');
+
+    /* =======================================================
+       2. BOWL GLOW ENGINE (96×60 CANVAS INTERPOLATION)
+       ======================================================= */
+    const canvas = document.getElementById('bg');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const W = 96;
+    const H = 60;
+    const imgData = ctx.createImageData(W, H);
+    const data = imgData.data;
+
+    // Keys table: q -> [tip, half, soft]
+    const keys = [
+      { q: 0,    tip: .30, half: .34, soft: .22 },
+      { q: .03,  tip: .45, half: .38, soft: .26 },
+      { q: .08,  tip: .65, half: .38, soft: .22 },
+      { q: .18,  tip: .80, half: .38, soft: .22 },
+      { q: .40,  tip: .95, half: .38, soft: .19 },
+      { q: .66,  tip: 1.05, half: .46, soft: .16 },
+      { q: .87,  tip: 1.05, half: .66, soft: .13 },
+      { q: 1.15, tip: 1.10, half: .90, soft: .10 },
+      { q: 1.43, tip: 1.30, half: 1.60, soft: .10 },
+      { q: 1.80, tip: 2.40, half: 3.00, soft: .10 }
+    ];
+
+    function interpKeys(q) {
+      if (q <= keys[0].q) return { ...keys[0] };
+      if (q >= keys[keys.length - 1].q) return { ...keys[keys.length - 1] };
+      for (let i = 0; i < keys.length - 1; i++) {
+        const k1 = keys[i];
+        const k2 = keys[i + 1];
+        if (q >= k1.q && q <= k2.q) {
+          const f = (q - k1.q) / (k2.q - k1.q);
+          return {
+            tip: k1.tip + (k2.tip - k1.tip) * f,
+            half: k1.half + (k2.half - k1.half) * f,
+            soft: k1.soft + (k2.soft - k1.soft) * f
+          };
+        }
+      }
+      return { ...keys[0] };
+    }
+
+    function smoothstep(x) {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      return x * x * (3 - 2 * x);
+    }
+
+    let curTip = -0.3;
+    let curHalf = 0.3;
+    let curSoft = 0.1;
+
+    let targetTip = 0.30;
+    let targetHalf = 0.34;
+    let targetSoft = 0.22;
+
+    let isIntro = true;
+    let introStartTime = 0;
+
+    // Segment distance
+    function distToSegmentSquared(px, py, x1, y1, x2, y2) {
+      const l2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+      if (l2 === 0) return (px - x1) * (px - x1) + (py - y1) * (py - y1);
+      const t = clamp(((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2);
+      const cx = x1 + t * (x2 - x1);
+      const cy = y1 + t * (y2 - y1);
+      return (px - cx) * (px - cx) + (py - cy) * (py - cy);
+    }
+
+    function renderGlow(time) {
+      const aspect = window.innerWidth / (window.innerHeight || 1);
+      
+      // Idle drift
+      const driftTip = curTip + Math.sin(time * 0.00033 + 1.3) * 0.02;
+      const driftHalf = curHalf + Math.sin(time * 0.0005) * 0.015;
+      const tipVal = Math.max(0.01, driftTip);
+
+      // Build 48 curve points
+      const NPTS = 48;
+      const ptsX = new Float32Array(NPTS);
+      const ptsY = new Float32Array(NPTS);
+      for (let i = 0; i < NPTS; i++) {
+        const yy = -0.3 + (tipVal + 0.3) * (i / (NPTS - 1));
+        ptsY[i] = yy;
+        const norm = Math.max(0, 1 - yy / tipVal);
+        ptsX[i] = driftHalf * aspect * Math.pow(norm, 0.72);
+      }
+
+      // Precompute segments
+      const segLen = NPTS - 1;
+      const RND = 0.25;
+      const softVal = Math.max(0.01, curSoft);
+
+      let idx = 0;
+      for (let y = 0; y < H; y++) {
+        const py = y / H;
+        for (let x = 0; x < W; x++) {
+          const px = Math.abs(x / W - 0.5) * aspect;
+
+          // Find min distance squared to polyline
+          let minD2 = 1e9;
+          for (let s = 0; s < segLen; s++) {
+            const d2 = distToSegmentSquared(px, py, ptsX[s], ptsY[s], ptsX[s + 1], ptsY[s + 1]);
+            if (d2 < minD2) minD2 = d2;
+          }
+          const dist = Math.sqrt(minD2);
+
+          // Check if inside curve
+          let inside = false;
+          if (py < tipVal) {
+            const curveX = driftHalf * aspect * Math.pow(Math.max(0, 1 - py / tipVal), 0.72);
+            if (px < curveX) inside = true;
+          }
+
+          const sd = inside ? -dist : dist;
+          const sdRnd = sd - RND;
+          const g = 1 - smoothstep((sdRnd + softVal) / (2 * softVal));
+
+          // Color ramp
+          // < 0.38: #ffffff (255,255,255) to #d2daff (210,218,255)
+          // >= 0.38: #d2daff (210,218,255) to #8fd5f1 (143,213,241)
+          let r, gCol, b;
+          if (g < 0.38) {
+            const f = smoothstep(g / 0.38);
+            r = Math.round(255 + (210 - 255) * f);
+            gCol = Math.round(255 + (218 - 255) * f);
+            b = Math.round(255 + (255 - 255) * f);
+          } else {
+            const f = smoothstep((g - 0.38) / 0.62);
+            r = Math.round(210 + (143 - 210) * f);
+            gCol = Math.round(218 + (213 - 218) * f);
+            b = Math.round(255 + (241 - 255) * f);
+          }
+
+          data[idx]     = r;
+          data[idx + 1] = gCol;
+          data[idx + 2] = b;
+          data[idx + 3] = 255;
+          idx += 4;
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    /* =======================================================
+       3. SCROLL & ANIMATION COORDINATOR
+       ======================================================= */
+    const stmtEl = document.getElementById('stmt');
+    const navEl = document.getElementById('nav');
+    const splitEl = document.getElementById('split');
+    const rowEl = document.getElementById('row');
+    const shipImg = document.getElementById('ship');
+
+    function onScroll() {
+      const scrollY = window.scrollY || window.pageYOffset || 0;
+      const vh = window.innerHeight || 1;
+      const q = scrollY / vh;
+
+      // Update bowl targets from table
+      const k = interpKeys(q);
+      targetTip = k.tip;
+      targetHalf = k.half;
+      targetSoft = k.soft;
+
+      // Statement Section
+      // Rise: s = clamp((q - .69)/.74), translateY = .205 * (1-s)^2 * vh
+      const s = clamp((q - 0.69) / 0.74);
+      const translateY = 0.205 * Math.pow(1 - s, 2) * vh;
+      stmtEl.style.transform = `translateY(${translateY}px)`;
+
+      // Reveal: p = clamp((q - .56)/2.03)
+      const pStmt = clamp((q - 0.56) / 2.03);
+      paintChars(stmtChars, pStmt, 0.16, '#0b1d3a', '#3f7cff', '#ffffff');
+
+      // Nav CTA pop
+      if (pStmt > 0.4) {
+        navEl.classList.add('on');
+      } else {
+        navEl.classList.remove('on');
+      }
+
+      // Dark Split Section
+      const splitRect = splitEl.getBoundingClientRect();
+      const splitTop = splitRect.top;
+      const p2 = clamp((0.8 - splitTop / vh) / 0.65);
+      paintChars(h2Chars, p2, 0.35, '#ffffff', '#8fe6f4', '#5c6f92');
+
+      // Row fade-up
+      if (p2 > 0.92) {
+        rowEl.classList.add('on');
+      } else {
+        rowEl.classList.remove('on');
+      }
+
+      // Ship zoom scale: 1.08 - 0.08 * clamp(1 - splitTop/vh)
+      const scaleProg = clamp(1 - splitTop / vh);
+      const shipScale = 1.08 - 0.08 * scaleProg;
+      shipImg.style.transform = `scale(${shipScale})`;
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    /* =======================================================
+       4. INTRO LOOP & RAF MAIN LOOP
+       ======================================================= */
+    let startTime = null;
+
+    function loop(time) {
+      if (!startTime) startTime = time;
+
+      // Intro bowl entrance: starts at tip -0.3, half 0.3, soft 0.1
+      // after 0.25s eases over 1.05s to q=0 values
+      const elapsed = (time - startTime) / 1000;
+      if (isIntro) {
+        if (elapsed < 0.25) {
+          curTip = -0.3;
+          curHalf = 0.3;
+          curSoft = 0.1;
+        } else if (elapsed < 1.30) {
+          const prog = smoothstep((elapsed - 0.25) / 1.05);
+          curTip = -0.3 + (targetTip - (-0.3)) * prog;
+          curHalf = 0.3 + (targetHalf - 0.3) * prog;
+          curSoft = 0.1 + (targetSoft - 0.1) * prog;
+        } else {
+          isIntro = false;
+        }
+      } else {
+        // Inertia chase
+        curTip += (targetTip - curTip) * 0.12;
+        curHalf += (targetHalf - curHalf) * 0.12;
+        curSoft += (targetSoft - curSoft) * 0.12;
+      }
+
+      // Hero Headline Reveal (time based over 1.25s)
+      if (elapsed <= 1.5) {
+        const h1Prog = clamp((elapsed - 0.2) / 1.25);
+        paintChars(h1Chars, h1Prog, 0.35, '#0b1d3a', '#3f7cff', 'rgba(255,255,255,0)');
+      }
+
+      renderGlow(time);
+      requestAnimationFrame(loop);
+    }
+
+    // Trigger on first frame
+    requestAnimationFrame((t) => {
+      document.body.classList.add('ready');
+      onScroll();
+      requestAnimationFrame(loop);
+    });
+  </script>
+</body>
+</html>
