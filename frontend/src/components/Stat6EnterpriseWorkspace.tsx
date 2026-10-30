@@ -2095,14 +2095,14 @@ export const SupportModuleWorkspace: React.FC<WorkspaceProps & { tickets: any[] 
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto text-black dark:text-white">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Customer Support Desk, 360° Account Context &amp; Knowledge Base</h1>
-          <p className="text-xs text-slate-500">Replaces Zoho Desk, Zoho Assist &amp; SalesIQ</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Customer Support Desk, 360° Account Context &amp; Knowledge Base</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Replaces Zoho Desk, Zoho Assist &amp; SalesIQ</p>
         </div>
         <div className="flex gap-1.5 text-xs">
-          <button onClick={() => setSubTab('tickets')} className={`px-3 py-1.5 rounded-lg cursor-pointer ${subTab === 'tickets' ? 'bg-[#2563eb] text-white' : 'bg-white border'}`}>Ticket Queue &amp; 360° Sidebar</button>
-          <button onClick={() => setSubTab('kb')} className={`px-3 py-1.5 rounded-lg cursor-pointer ${subTab === 'kb' ? 'bg-[#2563eb] text-white' : 'bg-white border'}`}>Knowledge Base ({kbArticles.length})</button>
+          <button onClick={() => setSubTab('tickets')} className={`px-3 py-1.5 rounded-lg cursor-pointer font-medium transition ${subTab === 'tickets' ? 'bg-[#2563eb] text-white shadow-xs' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'}`}>Ticket Queue &amp; 360° Sidebar</button>
+          <button onClick={() => setSubTab('kb')} className={`px-3 py-1.5 rounded-lg cursor-pointer font-medium transition ${subTab === 'kb' ? 'bg-[#2563eb] text-white shadow-xs' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'}`}>Knowledge Base ({kbArticles.length})</button>
         </div>
       </div>
 
@@ -3012,15 +3012,15 @@ export const AutomationModuleWorkspace: React.FC<WorkspaceProps> = ({ apiBase, n
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto text-black dark:text-white">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Visual DAG Workflow Builder, Unified Approvals &amp; 1-Click Zoho One Importer</h1>
-          <p className="text-xs text-slate-500">Replaces Zoho Flow, Zoho Creator &amp; Archaic Deluge Scripting</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Visual DAG Workflow Builder, Unified Approvals &amp; 1-Click Zoho One Importer</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Replaces Zoho Flow, Zoho Creator &amp; Archaic Deluge Scripting</p>
         </div>
         <div className="flex gap-1.5 text-xs">
-          <button onClick={() => setSubTab('workflows')} className={`px-3 py-1.5 rounded-lg cursor-pointer ${subTab === 'workflows' ? 'bg-[#2563eb] text-white' : 'bg-white border'}`}>Visual DAG &amp; AI Builder</button>
-          <button onClick={() => setSubTab('approvals')} className={`px-3 py-1.5 rounded-lg cursor-pointer ${subTab === 'approvals' ? 'bg-[#2563eb] text-white' : 'bg-white border'}`}>Unified Approvals ({approvals.length})</button>
-          <button onClick={() => setSubTab('zoho')} className={`px-3 py-1.5 rounded-lg cursor-pointer ${subTab === 'zoho' ? 'bg-[#2563eb] text-white' : 'bg-white border'}`}>1-Click Zoho One Importer</button>
+          <button onClick={() => setSubTab('workflows')} className={`px-3 py-1.5 rounded-lg cursor-pointer font-medium transition ${subTab === 'workflows' ? 'bg-[#2563eb] text-white shadow-xs' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'}`}>Visual DAG &amp; AI Builder</button>
+          <button onClick={() => setSubTab('approvals')} className={`px-3 py-1.5 rounded-lg cursor-pointer font-medium transition ${subTab === 'approvals' ? 'bg-[#2563eb] text-white shadow-xs' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'}`}>Unified Approvals ({approvals.length})</button>
+          <button onClick={() => setSubTab('zoho')} className={`px-3 py-1.5 rounded-lg cursor-pointer font-medium transition ${subTab === 'zoho' ? 'bg-[#2563eb] text-white shadow-xs' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'}`}>1-Click Zoho One Importer</button>
         </div>
       </div>
 

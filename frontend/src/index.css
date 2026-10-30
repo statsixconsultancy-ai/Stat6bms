@@ -105,6 +105,22 @@
   border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
+/* Eliminate white buttons and white-on-white text in Dark Mode */
+.dark button.bg-white,
+.dark button.bg-slate-50,
+.dark button.bg-slate-100 {
+  background-color: #1a2744 !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.dark button.bg-white:hover,
+.dark button.bg-slate-50:hover,
+.dark button.bg-slate-100:hover {
+  background-color: #24355a !important;
+  color: #ffffff !important;
+}
+
 .font-brand {
   font-family: var(--font-brand);
   letter-spacing: 0.015em;
