@@ -750,12 +750,12 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
       {/* ---------------------------------------------------- */}
       <section id="hero" className="relative min-h-[max(100vh,640px)] z-10 overflow-hidden">
         
-        {/* Dynamic Revealing Headline */}
+        {/* Dynamic Revealing Headline - Word "system" 100% visible, responsive wrapping */}
         <h1
           ref={h1Ref}
-          className="absolute top-[21.5vh] left-[clamp(20px,5.7vw,82px)] font-normal text-[clamp(34px,4.65vw,70px)] leading-[1.03] tracking-[-0.035em] text-[#0b1d3a] whitespace-nowrap z-2"
+          className="absolute top-[20vh] left-[clamp(20px,5.7vw,82px)] max-w-[min(880px,86vw)] font-normal text-[clamp(28px,3.8vw,56px)] leading-[1.08] tracking-[-0.035em] text-[#0b1d3a] z-2"
         >
-          Meet <span className="hl">STAT6 BMS</span>, the business operating system<br />
+          Meet <span className="hl">STAT6 BMS</span>, the business operating system<br className="hidden sm:inline" />
           built so we shall collaborate
         </h1>
 
@@ -932,15 +932,138 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
           </div>
         </div>
 
-        {/* Right Column (41.7%): Aerial Container Ship in Norwegian Fjord Photo */}
-        <div className="relative overflow-hidden min-h-[500px] lg:min-h-screen">
-          <img
-            ref={shipRef}
-            id="ship"
-            src="https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20261029_050506_a830ff21-4c71-4272-bc39-b61cacb54463.png&w=1400&q=85"
-            alt="Aerial view of a container ship sailing up a misty fjord"
-            className="absolute inset-0 w-full h-full object-cover origin-[50%_60%] will-change-transform block"
-          />
+        {/* Right Column (41.7%): Sovereign BMS Operating Console (Replacing irrelevant ship photo) */}
+        <div className="relative p-6 sm:p-10 flex items-center justify-center bg-gradient-to-br from-[#0c1b36] via-[#09152b] to-[#060e1f] border-t lg:border-t-0 lg:border-l border-white/[0.1]">
+          <div className="w-full max-w-[520px] rounded-2xl bg-[#0d182e]/90 border border-white/[0.12] shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl overflow-hidden font-sans">
+            
+            {/* Console Header Bar */}
+            <div className="px-4 py-3 bg-[#0a1324] border-b border-white/[0.08] flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#f87171]"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-[#fbbf24]"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-[#34d399]"></div>
+              </div>
+              <div className="px-3 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10.5px] font-mono text-slate-300 flex items-center gap-1.5">
+                <Lock size={10} className="text-[#2fe0d0]" />
+                <span>bms.stat6.enterprise / sovereign-runtime</span>
+              </div>
+              <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                14 UP
+              </span>
+            </div>
+
+            {/* Console Body */}
+            <div className="p-4 sm:p-5 space-y-4 text-xs text-left">
+              
+              {/* Telemetry KPIs Row */}
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                  <div className="text-[10px] font-mono text-slate-400 uppercase">Paid Revenue MTD</div>
+                  <div className="font-bold text-base text-white mt-0.5">$1,248,500</div>
+                  <div className="text-[9.5px] text-emerald-400 font-mono mt-0.5">+14.2% vs budget</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                  <div className="text-[10px] font-mono text-slate-400 uppercase">Reconciled GL</div>
+                  <div className="font-bold text-base text-white mt-0.5">1,420 Txns</div>
+                  <div className="text-[9.5px] text-emerald-400 font-mono mt-0.5">100% SHA-256 match</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                  <div className="text-[10px] font-mono text-slate-400 uppercase">RBAC Guard</div>
+                  <div className="font-bold text-base text-emerald-400 mt-0.5">7 Portals</div>
+                  <div className="text-[9.5px] text-slate-400 font-mono mt-0.5">Zero 3rd-party cloud</div>
+                </div>
+              </div>
+
+              {/* Live Service Microservices Grid */}
+              <div className="p-3 rounded-xl bg-black/30 border border-white/[0.06] space-y-2">
+                <div className="flex items-center justify-between text-[10.5px] font-mono text-slate-400">
+                  <span className="font-semibold text-white flex items-center gap-1.5">
+                    <Layers size={12} className="text-[#2fe0d0]" />
+                    Sovereign BMS Architecture
+                  </span>
+                  <span className="text-emerald-400">99.95% SLA Active</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>Commercial CRM &amp; Pipeline</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>Double-Entry General Ledger</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>Jira Agile Sprints &amp; Velocity</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>HR Directory &amp; Staff Payroll</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>Procurement &amp; Vendor POs</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>AES-256-GCM Password Vault</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Real-time Event Stream */}
+              <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] space-y-1.5 font-mono text-[10.5px]">
+                <div className="text-slate-400 text-[10px] uppercase tracking-wider mb-1">
+                  Live Event Ledger Stream
+                </div>
+                <div className="text-slate-300 leading-tight">
+                  <span className="text-slate-500">[0.18s]</span> <span className="text-[#2fe0d0]">GL_RECONCILE:</span> Matched $84,200 PO invoice to supplier journal
+                </div>
+                <div className="text-slate-300 leading-tight">
+                  <span className="text-slate-500">[0.32s]</span> <span className="text-purple-400">RBAC_GUARD:</span> Enforced Vendor Portal tenant isolation token
+                </div>
+                <div className="text-slate-300 leading-tight">
+                  <span className="text-slate-500">[0.45s]</span> <span className="text-emerald-400">JIRA_SYNC:</span> Reconciled Sprint 8 velocity burndown
+                </div>
+              </div>
+
+              {/* 1-Click Persona Access Strip */}
+              <div className="pt-1 flex items-center justify-between border-t border-white/[0.06]">
+                <span className="text-[10px] font-mono text-slate-400">
+                  Instant Test Login:
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handlePresetSelect(personaCards[0])}
+                    className="px-2 py-0.5 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 font-mono text-[10px] font-semibold transition cursor-pointer"
+                  >
+                    Admin
+                  </button>
+                  <button
+                    onClick={() => handlePresetSelect(personaCards[1])}
+                    className="px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 font-mono text-[10px] font-semibold transition cursor-pointer"
+                  >
+                    Manager
+                  </button>
+                  <button
+                    onClick={() => handlePresetSelect(personaCards[4])}
+                    className="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-mono text-[10px] font-semibold transition cursor-pointer"
+                  >
+                    Vendor
+                  </button>
+                  <button
+                    onClick={() => handlePresetSelect(personaCards[3])}
+                    className="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-mono text-[10px] font-semibold transition cursor-pointer"
+                  >
+                    Client
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
         </div>
       </section>
 
