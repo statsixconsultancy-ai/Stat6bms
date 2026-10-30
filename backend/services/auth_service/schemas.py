@@ -10,10 +10,30 @@ class RegisterRequest(BaseModel):
     persona: str = "ADMIN"
     currency: Optional[str] = "USD"
     timezone: Optional[str] = "UTC"
+    contract_accepted: bool = True
+    contract_version: Optional[str] = "v2.4-enterprise-msa"
 
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class OAuthTokenRequest(BaseModel):
+    grant_type: str = "password"
+    username: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    scope: Optional[str] = "read write"
+
+class OAuthTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    scope: str = "read write"
+    user: Dict[str, Any]
+    persona: str
+    role: str
 
 class TokenResponse(BaseModel):
     access_token: str

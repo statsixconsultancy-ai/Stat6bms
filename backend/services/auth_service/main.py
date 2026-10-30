@@ -36,6 +36,8 @@ from services.auth_service.models import (
 from services.auth_service.schemas import (
     RegisterRequest,
     LoginRequest,
+    OAuthTokenRequest,
+    OAuthTokenResponse,
     TokenResponse,
     UserCreateRequest,
     UserResponse,
@@ -185,6 +187,76 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         user=user.to_dict(),
         organization=org.to_dict() if org else {"id": user.org_id, "name": "Default"}
     )
+
+@app.post("/auth/oauth/token", response_model=OAuthTokenResponse)
+@app.post("/oauth/token", response_model=OAuthTokenResponse)
+def oauth_token(req: OAuthTokenRequest, db: Session = Depends(get_db)):
+    """
+    Native RFC 6749 OAuth 2.0 Token Endpoint.
+    Zero external dependencies: issues cryptographically signed JWT bearer tokens
+    with RBAC claims, persona, and tenant isolation scopes.
+    """
+    login_id = req.username or req.email
+    if not login_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing username or email for OAuth grant."
+        )
+
+    user = db.query(User).filter_by(email=login_id, is_active=True).first()
+    if not user or not req.password or not verify_password(req.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid OAuth credentials or inactive account."
+        )
+
+    user.last_login = datetime.utcnow()
+    db.commit()
+
+    token = create_access_token({
+        "sub": user.id,
+        "org_id": user.org_id,
+        "role": user.role,
+        "persona": user.persona or "EMPLOYEE",
+        "email": user.email,
+        "scope": req.scope or "read write"
+    })
+
+    return OAuthTokenResponse(
+        access_token=token,
+        token_type="bearer",
+        expires_in=config.jwt_access_token_expire_minutes * 60,
+        scope=req.scope or "read write",
+        user=user.to_dict(),
+        persona=user.persona or "EMPLOYEE",
+        role=user.role or "member"
+    )
+
+@app.get("/auth/oauth/userinfo")
+@app.get("/oauth/userinfo")
+def oauth_userinfo(
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
+    """Native OpenID / OAuth 2.0 UserInfo Endpoint."""
+    user = db.query(User).filter_by(id=user_ctx.user_id).first()
+    if not user:
+        return {
+            "sub": user_ctx.user_id,
+            "email": user_ctx.email,
+            "role": user_ctx.role,
+            "persona": "EMPLOYEE",
+            "org_id": user_ctx.org_id
+        }
+    return {
+        "sub": user.id,
+        "email": user.email,
+        "name": user.full_name,
+        "role": user.role,
+        "persona": user.persona,
+        "org_id": user.org_id,
+        "is_active": user.is_active
+    }
 
 @app.get("/auth/me")
 def get_current_user_profile(

@@ -35,11 +35,14 @@ import {
   Send,
   RefreshCw,
   Play,
-  Menu
+  Menu,
+  LogOut,
+  UserCheck
 } from 'lucide-react';
 import { OmniCopilotDock, CopilotMessage } from './components/OmniCopilotDock';
 import { GeminiMarkdownRenderer } from './components/GeminiMarkdownRenderer';
 import { GeminiSparkleIcon, GeminiMiniSparkle } from './components/GeminiIcons';
+import { Stat6IntroLandingPage, AuthSuccessPayload } from './components/Stat6IntroLandingPage';
 import {
   getHeaders,
   CrmQuotesAndBookingsPanel,
@@ -190,11 +193,21 @@ export default function App() {
     return (typeof window !== 'undefined' && window.localStorage.getItem('stat6_user_persona')) || 'ADMIN';
   });
   const [currentUser, setCurrentUser] = useState<{ email: string; full_name: string; role: string; persona: string }>({
-    email: 'admin@acroflow.enterprise',
-    full_name: 'Prann (Enterprise Admin)',
-    role: 'ADMIN',
-    persona: 'ADMIN'
+    email: (typeof window !== 'undefined' && window.localStorage.getItem('stat6_user_email')) || 'admin@acroflow.enterprise',
+    full_name: (typeof window !== 'undefined' && window.localStorage.getItem('stat6_user_name')) || 'Prann (Enterprise Admin)',
+    role: (typeof window !== 'undefined' && window.localStorage.getItem('stat6_user_role')) || 'ADMIN',
+    persona: (typeof window !== 'undefined' && window.localStorage.getItem('stat6_user_persona')) || 'ADMIN'
   });
+
+  // Front Intro Landing Page Gate State (Shows Intro & Native OAuth Gate when not logged in)
+  const [showIntroPage, setShowIntroPage] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const token = window.localStorage.getItem('stat6_jwt_token');
+      return !token;
+    }
+    return false;
+  });
+
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authForm, setAuthForm] = useState({
@@ -712,6 +725,36 @@ export default function App() {
     }
   };
 
+  const handleSignOut = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('stat6_jwt_token');
+    }
+    setShowIntroPage(true);
+    notifyUser('Signed out from session. Returned to STAT6 Intro Portal.');
+  };
+
+  const handleIntroAuthSuccess = (payload: AuthSuccessPayload) => {
+    const { token, user } = payload;
+    setCurrentUser({
+      email: user.email,
+      full_name: user.full_name || user.email,
+      role: user.role || 'ADMIN',
+      persona: user.persona || 'ADMIN'
+    });
+    setActivePersona(user.persona || 'ADMIN');
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('stat6_jwt_token', token);
+      window.localStorage.setItem('stat6_user_id', user.id);
+      window.localStorage.setItem('stat6_user_role', user.role || 'ADMIN');
+      window.localStorage.setItem('stat6_user_persona', user.persona || 'ADMIN');
+      window.localStorage.setItem('stat6_user_name', user.full_name || user.email);
+      window.localStorage.setItem('stat6_user_email', user.email);
+    }
+    setShowIntroPage(false);
+    notifyUser(`Authenticated as ${user.full_name} (${user.persona}) via Native OAuth.`);
+    refreshAllData();
+  };
+
   const handleSwitchPersona = (persona: string) => {
     const personaDirectory: Record<string, { email: string; full_name: string; role: string }> = {
       ADMIN: { email: 'admin@acroflow.enterprise', full_name: 'Prann (Enterprise Admin)', role: 'ADMIN' },
@@ -1063,6 +1106,20 @@ export default function App() {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
   };
 
+  // ----------------------------------------------------
+  // FRONT INTRO / LANDING PAGE GATE (Native OAuth & Contract)
+  // ----------------------------------------------------
+  if (showIntroPage) {
+    return (
+      <Stat6IntroLandingPage
+        apiBase={API_BASE}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+        onAuthSuccess={handleIntroAuthSuccess}
+      />
+    );
+  }
+
   return (
     <div className={`flex h-screen w-screen overflow-hidden ${isDarkMode ? 'dark bg-[#0b1120] text-white' : 'bg-[#f0f2f8] text-black'} antialiased font-sans select-none text-[13px]`}>
       
@@ -1178,202 +1235,251 @@ export default function App() {
             </div>
           </div>
 
-          {/* FOLDERS & EXPANDABLE SECTIONS */}
+          {/* FOLDERS & EXPANDABLE SECTIONS (ENFORCED VIA RBAC) */}
           <div className="px-2.5 pt-2 space-y-2 flex-1 overflow-y-auto text-xs">
             
-            {/* FOLDER 1: SALES */}
-            <div className="space-y-0.5">
-              <button
-                onClick={() => setSalesExpanded(!salesExpanded)}
-                className="w-full flex items-center justify-between px-2 py-1 text-slate-300 hover:text-white text-xs font-normal"
-              >
-                <div className="flex items-center gap-2">
-                  {salesExpanded ? <FolderOpen size={15} className="text-[#38bdf8]" /> : <Folder size={15} className="text-[#38bdf8]" />}
-                  <span className="font-medium text-slate-200">Sales</span>
+            {/* EXTERNAL PORTAL DEDICATED NAV CARD */}
+            {['CUSTOMER', 'VENDOR', 'PARTNER'].includes(activePersona) && (
+              <div className="p-3 bg-[#111c33] rounded-xl border border-slate-700/60 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  {activePersona === 'VENDOR' && <ShoppingCart size={15} className="text-rose-400" />}
+                  {activePersona === 'CUSTOMER' && <User size={15} className="text-amber-400" />}
+                  {activePersona === 'PARTNER' && <TrendingUp size={15} className="text-purple-400" />}
+                  <span className="text-white">
+                    {activePersona === 'VENDOR' ? 'Supplier Portal' : activePersona === 'CUSTOMER' ? 'Client Portal' : 'Partner Portal'}
+                  </span>
                 </div>
-                {salesExpanded ? <ChevronUp size={13} className="text-slate-400" /> : <ChevronDown size={13} className="text-slate-400" />}
-              </button>
-
-              {salesExpanded && (
-                <div className="space-y-0.5 pt-0.5 pl-1">
-                  <button
-                    onClick={() => setActiveTab('leads')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'leads' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <Target size={15} className={activeTab === 'leads' ? 'text-[#60a5fa]' : 'text-slate-400'} />
-                    <span>Leads</span>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('contacts')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'contacts' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <User size={15} className={activeTab === 'contacts' ? 'text-[#60a5fa]' : 'text-slate-400'} />
-                    <span>Contacts</span>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab('deals')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'deals' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <TrendingUp size={15} className={activeTab === 'deals' ? 'text-[#60a5fa]' : 'text-slate-400'} />
-                    <span>Deals Pipeline</span>
-                  </button>
+                <p className="text-[11px] text-slate-300 leading-snug">
+                  {activePersona === 'VENDOR' && 'Acknowledge purchase orders, submit delivery slips, invoice bills, and quote on RFQ tenders.'}
+                  {activePersona === 'CUSTOMER' && 'Review proposals, e-sign contracts, pay invoices online, and track service tickets.'}
+                  {activePersona === 'PARTNER' && 'Register deals, access co-selling collateral, and view commission revenue statements.'}
+                </p>
+                <div className="pt-1 border-t border-slate-700/50 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                  <span>Isolated RBAC Scope</span>
+                  <span className="text-emerald-400">● Active</span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* FOLDER 2: OPERATIONS & DELIVERY */}
-            <div className="space-y-0.5 pt-1 border-t border-slate-700/60">
-              <button
-                onClick={() => setOperationsExpanded(!operationsExpanded)}
-                className="w-full flex items-center justify-between px-2 py-1 text-slate-300 hover:text-white text-xs font-normal"
-              >
-                <div className="flex items-center gap-2">
-                  {operationsExpanded ? <FolderOpen size={15} className="text-[#38bdf8]" /> : <Folder size={15} className="text-[#38bdf8]" />}
-                  <span className="font-medium text-slate-200">Operations</span>
-                </div>
-                {operationsExpanded ? <ChevronUp size={13} className="text-slate-400" /> : <ChevronDown size={13} className="text-slate-400" />}
-              </button>
+            {/* FOLDER 1: SALES (Admin, Manager, Partner) */}
+            {['ADMIN', 'MANAGER', 'PARTNER'].includes(activePersona) && (
+              <div className="space-y-0.5">
+                <button
+                  onClick={() => setSalesExpanded(!salesExpanded)}
+                  className="w-full flex items-center justify-between px-2 py-1 text-slate-300 hover:text-white text-xs font-normal"
+                >
+                  <div className="flex items-center gap-2">
+                    {salesExpanded ? <FolderOpen size={15} className="text-[#38bdf8]" /> : <Folder size={15} className="text-[#38bdf8]" />}
+                    <span className="font-medium text-slate-200">Sales</span>
+                  </div>
+                  {salesExpanded ? <ChevronUp size={13} className="text-slate-400" /> : <ChevronDown size={13} className="text-slate-400" />}
+                </button>
 
-              {operationsExpanded && (
-                <div className="space-y-0.5 pt-0.5 pl-1">
-                  <button
-                    onClick={() => setActiveTab('projects')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'projects' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <Briefcase size={15} className="text-[#38bdf8]" />
-                    <span>Jira Agile Sprints</span>
-                  </button>
+                {salesExpanded && (
+                  <div className="space-y-0.5 pt-0.5 pl-1">
+                    <button
+                      onClick={() => setActiveTab('leads')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                        activeTab === 'leads' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                      }`}
+                    >
+                      <Target size={15} className={activeTab === 'leads' ? 'text-[#60a5fa]' : 'text-slate-400'} />
+                      <span>Leads</span>
+                    </button>
 
-                  <button
-                    onClick={() => setActiveTab('marketing')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'marketing' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <Layers size={15} className="text-[#f43f5e]" />
-                    <span>Marketing ROI</span>
-                  </button>
+                    <button
+                      onClick={() => setActiveTab('contacts')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                        activeTab === 'contacts' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                      }`}
+                    >
+                      <User size={15} className={activeTab === 'contacts' ? 'text-[#60a5fa]' : 'text-slate-400'} />
+                      <span>Contacts</span>
+                    </button>
 
-                  <button
-                    onClick={() => setActiveTab('hr')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'hr' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <Users size={15} className="text-[#34d399]" />
-                    <span>HR & Staff</span>
-                  </button>
+                    <button
+                      onClick={() => setActiveTab('deals')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                        activeTab === 'deals' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                      }`}
+                    >
+                      <TrendingUp size={15} className={activeTab === 'deals' ? 'text-[#60a5fa]' : 'text-slate-400'} />
+                      <span>Deals Pipeline</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
-                  <button
-                    onClick={() => setActiveTab('finance')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'finance' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <CreditCard size={15} className="text-[#c084fc]" />
-                    <span>Finance & Invoices</span>
-                  </button>
+            {/* FOLDER 2: OPERATIONS & DELIVERY (Admin, Manager, Employee) */}
+            {['ADMIN', 'MANAGER', 'EMPLOYEE'].includes(activePersona) && (
+              <div className="space-y-0.5 pt-1 border-t border-slate-700/60">
+                <button
+                  onClick={() => setOperationsExpanded(!operationsExpanded)}
+                  className="w-full flex items-center justify-between px-2 py-1 text-slate-300 hover:text-white text-xs font-normal"
+                >
+                  <div className="flex items-center gap-2">
+                    {operationsExpanded ? <FolderOpen size={15} className="text-[#38bdf8]" /> : <Folder size={15} className="text-[#38bdf8]" />}
+                    <span className="font-medium text-slate-200">
+                      {activePersona === 'EMPLOYEE' ? 'My Operations' : 'Operations'}
+                    </span>
+                  </div>
+                  {operationsExpanded ? <ChevronUp size={13} className="text-slate-400" /> : <ChevronDown size={13} className="text-slate-400" />}
+                </button>
 
-                  <button
-                    onClick={() => setActiveTab('inventory')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'inventory' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <Package size={15} className="text-[#fb923c]" />
-                    <span>Inventory & SKUs</span>
-                  </button>
+                {operationsExpanded && (
+                  <div className="space-y-0.5 pt-0.5 pl-1">
+                    <button
+                      onClick={() => setActiveTab('projects')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                        activeTab === 'projects' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                      }`}
+                    >
+                      <Briefcase size={15} className="text-[#38bdf8]" />
+                      <span>Jira Agile Sprints</span>
+                    </button>
 
-                  <button
-                    onClick={() => setActiveTab('procurement')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'procurement' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <ShoppingCart size={15} className="text-[#eab308]" />
-                    <span>Procurement & POs</span>
-                  </button>
+                    {activePersona !== 'EMPLOYEE' && (
+                      <button
+                        onClick={() => setActiveTab('marketing')}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                          activeTab === 'marketing' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                        }`}
+                      >
+                        <Layers size={15} className="text-[#f43f5e]" />
+                        <span>Marketing ROI</span>
+                      </button>
+                    )}
 
-                  <button
-                    onClick={() => setActiveTab('support')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'support' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <Headphones size={15} className="text-[#ec4899]" />
-                    <span>Support Desk</span>
-                  </button>
-                </div>
-              )}
-            </div>
+                    <button
+                      onClick={() => setActiveTab('hr')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                        activeTab === 'hr' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                      }`}
+                    >
+                      <Users size={15} className="text-[#34d399]" />
+                      <span>{activePersona === 'EMPLOYEE' ? 'My Directory & Leaves' : 'HR & Staff'}</span>
+                    </button>
 
-            {/* FOLDER 3: GOVERNANCE & AI */}
-            <div className="space-y-0.5 pt-1 border-t border-slate-700/60">
-              <button
-                onClick={() => setAdminExpanded(!adminExpanded)}
-                className="w-full flex items-center justify-between px-2 py-1 text-slate-300 hover:text-white text-xs font-normal"
-              >
-                <div className="flex items-center gap-2">
-                  {adminExpanded ? <FolderOpen size={15} className="text-[#38bdf8]" /> : <Folder size={15} className="text-[#38bdf8]" />}
-                  <span className="font-medium text-slate-200">Governance & AI</span>
-                </div>
-                {adminExpanded ? <ChevronUp size={13} className="text-slate-400" /> : <ChevronDown size={13} className="text-slate-400" />}
-              </button>
+                    {activePersona !== 'EMPLOYEE' && (
+                      <button
+                        onClick={() => setActiveTab('finance')}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                          activeTab === 'finance' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                        }`}
+                      >
+                        <CreditCard size={15} className="text-[#c084fc]" />
+                        <span>Finance & Invoices</span>
+                      </button>
+                    )}
 
-              {adminExpanded && (
-                <div className="space-y-0.5 pt-0.5 pl-1">
-                  <button
-                    onClick={() => setActiveTab('collaboration')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'collaboration' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <MessageSquare size={15} className="text-[#38bdf8]" />
-                    <span>Team Chat</span>
-                  </button>
+                    {activePersona !== 'EMPLOYEE' && (
+                      <button
+                        onClick={() => setActiveTab('inventory')}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                          activeTab === 'inventory' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                        }`}
+                      >
+                        <Package size={15} className="text-[#fb923c]" />
+                        <span>Inventory & SKUs</span>
+                      </button>
+                    )}
 
-                  <button
-                    onClick={() => setActiveTab('compliance')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'compliance' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <ShieldCheck size={15} className="text-[#10b981]" />
-                    <span>Compliance & RBAC</span>
-                  </button>
+                    {activePersona !== 'EMPLOYEE' && (
+                      <button
+                        onClick={() => setActiveTab('procurement')}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                          activeTab === 'procurement' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                        }`}
+                      >
+                        <ShoppingCart size={15} className="text-[#eab308]" />
+                        <span>Procurement & POs</span>
+                      </button>
+                    )}
 
-                  <button
-                    onClick={() => setActiveTab('automation')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'automation' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <Zap size={15} className="text-[#eab308]" />
-                    <span>WHEN-IF-DO Rules</span>
-                  </button>
+                    <button
+                      onClick={() => setActiveTab('support')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                        activeTab === 'support' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                      }`}
+                    >
+                      <Headphones size={15} className="text-[#ec4899]" />
+                      <span>Support Desk</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
-                  <button
-                    onClick={() => setActiveTab('settings')}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
-                      activeTab === 'settings' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
-                    }`}
-                  >
-                    <SettingsIcon size={15} className="text-[#94a3b8]" />
-                    <span>Module Controls</span>
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* FOLDER 3: GOVERNANCE & AI (Admin, Manager, Auditor, Employee) */}
+            {['ADMIN', 'MANAGER', 'EXTERNAL_USER', 'EMPLOYEE'].includes(activePersona) && (
+              <div className="space-y-0.5 pt-1 border-t border-slate-700/60">
+                <button
+                  onClick={() => setAdminExpanded(!adminExpanded)}
+                  className="w-full flex items-center justify-between px-2 py-1 text-slate-300 hover:text-white text-xs font-normal"
+                >
+                  <div className="flex items-center gap-2">
+                    {adminExpanded ? <FolderOpen size={15} className="text-[#38bdf8]" /> : <Folder size={15} className="text-[#38bdf8]" />}
+                    <span className="font-medium text-slate-200">
+                      {activePersona === 'EXTERNAL_USER' ? 'Compliance Vault' : 'Governance & AI'}
+                    </span>
+                  </div>
+                  {adminExpanded ? <ChevronUp size={13} className="text-slate-400" /> : <ChevronDown size={13} className="text-slate-400" />}
+                </button>
+
+                {adminExpanded && (
+                  <div className="space-y-0.5 pt-0.5 pl-1">
+                    {activePersona !== 'EXTERNAL_USER' && (
+                      <button
+                        onClick={() => setActiveTab('collaboration')}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                          activeTab === 'collaboration' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                        }`}
+                      >
+                        <MessageSquare size={15} className="text-[#38bdf8]" />
+                        <span>Team Chat</span>
+                      </button>
+                    )}
+
+                    {activePersona !== 'EMPLOYEE' && (
+                      <button
+                        onClick={() => setActiveTab('compliance')}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                          activeTab === 'compliance' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                        }`}
+                      >
+                        <ShieldCheck size={15} className="text-[#10b981]" />
+                        <span>Compliance & RBAC</span>
+                      </button>
+                    )}
+
+                    {['ADMIN', 'MANAGER'].includes(activePersona) && (
+                      <button
+                        onClick={() => setActiveTab('automation')}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                          activeTab === 'automation' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                        }`}
+                      >
+                        <Zap size={15} className="text-[#eab308]" />
+                        <span>WHEN-IF-DO Rules</span>
+                      </button>
+                    )}
+
+                    {activePersona === 'ADMIN' && (
+                      <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition ${
+                          activeTab === 'settings' ? 'bg-[#243964] text-white font-normal shadow-xs' : 'text-slate-300 hover:bg-[#1e3056]/50 font-normal'
+                        }`}
+                      >
+                        <SettingsIcon size={15} className="text-[#94a3b8]" />
+                        <span>Module Controls</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
 
@@ -1422,32 +1528,32 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Live 7-Persona Role & Portal Switcher */}
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs">
-              <span className="text-[10px] font-mono text-slate-500 uppercase">Persona:</span>
-              <select
-                value={activePersona}
-                onChange={e => handleSwitchPersona(e.target.value)}
-                className="bg-transparent font-bold text-xs text-black dark:text-white focus:outline-none cursor-pointer"
-                title="Switch among all 7 STAT6 Role Personas (Internal & Free External Portals)"
-              >
-                <option value="ADMIN">01. ADMIN (Internal Full)</option>
-                <option value="MANAGER">02. MANAGER (Dept Head)</option>
-                <option value="EMPLOYEE">03. EMPLOYEE (Self-Service)</option>
-                <option value="CUSTOMER">04. CUSTOMER PORTAL (Free)</option>
-                <option value="VENDOR">05. VENDOR PORTAL (Free)</option>
-                <option value="PARTNER">06. PARTNER PORTAL (Free)</option>
-                <option value="EXTERNAL_USER">07. EXTERNAL AUDITOR</option>
-              </select>
+            {/* Authenticated Persona & RBAC Status Pill (Set strictly at Native OAuth login) */}
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs font-mono shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-semibold">RBAC:</span>
+              <span className="font-bold text-black dark:text-white text-[11px] tracking-wide">
+                {activePersona}
+              </span>
             </div>
 
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="px-2.5 py-1 rounded-lg bg-[#162340] text-white text-xs font-mono hover:opacity-90 cursor-pointer flex items-center gap-1.5"
-              title="Manage JWT Session, Login or Register"
+            {/* Authenticated User Identity */}
+            <div
+              className="px-2.5 py-1 rounded-lg bg-[#162340] text-white text-xs font-mono flex items-center gap-1.5 shadow-xs"
+              title={`Authenticated User: ${currentUser.email} (${currentUser.role})`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              <span>{currentUser.full_name.split(' ')[0]} ({activePersona})</span>
+              <User size={13} className="text-blue-400" />
+              <span>{currentUser.full_name.split(' ')[0]}</span>
+            </div>
+
+            {/* Sign Out & Switch Account Button -> Returns to Front Intro & Portal Gate */}
+            <button
+              onClick={handleSignOut}
+              className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:border-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-700 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer flex items-center gap-1.5 text-xs font-medium"
+              title="Sign out and return to STAT6 Intro Landing Page & Portal Gate"
+            >
+              <LogOut size={13} />
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
 
             <button
