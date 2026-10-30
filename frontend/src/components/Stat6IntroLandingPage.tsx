@@ -26,7 +26,17 @@ import {
   Clock,
   ChevronRight,
   TrendingUp,
-  Globe
+  Globe,
+  Database,
+  Cpu,
+  Server,
+  FolderGit2,
+  Receipt,
+  Package,
+  ShoppingCart,
+  Headphones,
+  Sliders,
+  ShieldAlert
 } from 'lucide-react';
 import { GeminiSparkleIcon } from './GeminiIcons';
 
@@ -73,7 +83,7 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
     fullName: '',
     email: '',
     password: '',
-    orgName: 'My Enterprise Corp',
+    orgName: 'Enterprise Corp',
     persona: 'ADMIN',
     contractAccepted: false
   });
@@ -82,35 +92,35 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
   const personaCards = [
     {
       persona: 'ADMIN',
-      badge: '01. Internal',
+      badge: '01. Internal Full',
       title: 'Enterprise Administrator',
       email: 'admin@acroflow.enterprise',
       color: 'from-blue-600 to-indigo-700',
-      desc: 'Full governance, billing, 14 module toggles, RBAC policies & audit trails.'
+      desc: 'Master tenant governance, 14 module toggles, RBAC policies & cryptographic audit trails.'
     },
     {
       persona: 'MANAGER',
-      badge: '02. Internal',
+      badge: '02. Internal Head',
       title: 'Department Manager',
       email: 'manager@acroflow.enterprise',
       color: 'from-indigo-600 to-violet-700',
-      desc: 'Department approvals, team KPI metrics, budget reviews & SLA monitoring.'
+      desc: 'Department approvals, team KPI metrics, budget reviews & SLA escalation monitoring.'
     },
     {
       persona: 'EMPLOYEE',
-      badge: '03. Internal',
+      badge: '03. Internal Self',
       title: 'Staff Member',
       email: 'staff@acroflow.enterprise',
       color: 'from-emerald-600 to-teal-700',
-      desc: 'Employee self-service, task execution, time logs, payslips & support tickets.'
+      desc: 'Employee self-service, task execution, time logs, payslips & internal support tickets.'
     },
     {
       persona: 'CUSTOMER',
       badge: '04. External Portal',
-      title: 'Client / Customer',
+      title: 'Customer Contact',
       email: 'client@portal.enterprise',
       color: 'from-amber-600 to-orange-700',
-      desc: 'Free Customer Portal: view quotes, pay invoices, track project progress & tickets.'
+      desc: 'Free Customer Portal: review quotes, pay invoices, track delivery & submit service tickets.'
     },
     {
       persona: 'VENDOR',
@@ -126,16 +136,34 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
       title: 'Channel Partner',
       email: 'partner@portal.enterprise',
       color: 'from-purple-600 to-pink-700',
-      desc: 'Free Partner Portal: co-selling collateral, deal registration & commission statements.'
+      desc: 'Free Partner Portal: co-selling collateral, deal registration & revenue statements.'
     },
     {
       persona: 'EXTERNAL_USER',
-      badge: '07. External Guest',
-      title: 'External Auditor',
+      badge: '07. External Auditor',
+      title: 'Compliance Auditor',
       email: 'auditor@portal.enterprise',
       color: 'from-slate-600 to-slate-800',
       desc: 'Time-boxed read-only compliance vault, SOC 2 Type II attestations & financial audits.'
     }
+  ];
+
+  // 14 Integrated BMS Modules
+  const bmsModules = [
+    { id: 'crm', title: 'Commercial CRM & Leads', icon: Users, color: 'text-blue-500', desc: 'Unified pipeline, contact timelines, and 1-click lead qualification.' },
+    { id: 'deals', title: 'Deals & Revenue Forecast', icon: TrendingUp, color: 'text-indigo-500', desc: 'Weighted forecast stages, booking approvals, and win-probability scoring.' },
+    { id: 'jira', title: 'Jira Agile Sprints', icon: FolderGit2, color: 'text-sky-500', desc: 'Kanban boards, backlog sprint planning, and GitHub commit tracking.' },
+    { id: 'mkt', title: 'Marketing ROI & Campaigns', icon: Sparkles, color: 'text-rose-500', desc: 'Multi-channel attribution, ad spend tracking, and CAC calculation.' },
+    { id: 'hr', title: 'HR Directory & Staff', icon: Briefcase, color: 'text-emerald-500', desc: 'Employee onboarding, attendance, leave requests, and compensation.' },
+    { id: 'finance', title: 'Finance, Invoices & GL', icon: Receipt, color: 'text-teal-500', desc: 'Double-entry general ledger, automated invoicing, and tax journals.' },
+    { id: 'inventory', title: 'Inventory & SKU Matrix', icon: Package, color: 'text-amber-500', desc: 'Multi-warehouse stock levels, reorder alerts, and barcode lookups.' },
+    { id: 'procurement', title: 'Procurement & Vendor POs', icon: ShoppingCart, color: 'text-yellow-500', desc: 'Purchase requisition workflows, 3-way matching, and supplier scoring.' },
+    { id: 'support', title: 'Support Desk & SLAs', icon: Headphones, color: 'text-pink-500', desc: 'Omnichannel ticketing, automated SLA triggers, and CSAT scoring.' },
+    { id: 'collab', title: 'Real-Time Team Chat', icon: Mail, color: 'text-purple-500', desc: 'Channel conversations, direct messages, and contextual thread links.' },
+    { id: 'automation', title: 'WHEN-IF-DO Automation', icon: Zap, color: 'text-amber-400', desc: 'Visual DAG workflow compiler replacing Deluge and Zapier scripts.' },
+    { id: 'vault', title: 'Secrets & Password Vault', icon: Key, color: 'text-emerald-400', desc: 'AES-256-GCM zero-knowledge secret storage with rotation audit logs.' },
+    { id: 'copilot', title: 'Groq Agentic AI Mesh', icon: Bot, color: 'text-purple-400', desc: 'Floating Apple-style assistant executing typed tools across 14 services.' },
+    { id: 'governance', title: 'RBAC & Module Controls', icon: Sliders, color: 'text-slate-400', desc: 'Granular feature toggles, role permissions, and tenant isolation.' }
   ];
 
   // Native OAuth 2.0 Sign In Handler
@@ -328,50 +356,71 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
     <div className={`min-h-screen w-full flex flex-col ${isDarkMode ? 'dark bg-[#0b0f19] text-white' : 'bg-white text-[#0b0f19]'} antialiased font-sans select-none transition-colors duration-200`}>
       
       {/* ---------------------------------------------------- */}
-      {/* 1. TOP NAVBAR (MATCHING SCREENSHOT)                  */}
+      {/* 1. TOP NAVBAR (STAT6 BMS BRANDING & CONTROLS)        */}
       {/* ---------------------------------------------------- */}
       <header className="h-20 px-6 sm:px-12 xl:px-20 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] bg-white/90 dark:bg-[#0b0f19]/90 backdrop-blur-md sticky top-0 z-40">
         <div className="flex items-center gap-10">
           {/* STAT6 Logo in signature font-brand */}
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex items-center text-left cursor-pointer group"
-          >
-            <span className="font-brand font-bold text-[28px] tracking-[0.015em] text-[#0b0f19] dark:text-white transition-opacity group-hover:opacity-80">
-              STAT6
-            </span>
-          </button>
-
-          {/* Nav Links */}
-          <nav className="hidden md:flex items-center gap-7 text-[13.5px] font-medium text-[#0b0f19]/70 dark:text-white/70">
-            <a href="#services" className="hover:text-[#0b0f19] dark:hover:text-white transition">Services</a>
-            <a href="#work" className="hover:text-[#0b0f19] dark:hover:text-white transition">Work</a>
-            <a href="#process" className="hover:text-[#0b0f19] dark:hover:text-white transition">Process</a>
-            <a href="#faq" className="hover:text-[#0b0f19] dark:hover:text-white transition">FAQ</a>
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => { setAuthTab('presets'); setAuthDrawerOpen(true); }}
-              className="text-[#0b0f19]/80 dark:text-white/80 hover:text-[#0b0f19] dark:hover:text-white transition font-medium cursor-pointer"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="flex items-center gap-2.5 text-left cursor-pointer group"
             >
-              BMS waitlist
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-xs">
+                <BarChart2 size={18} className="text-white" />
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-brand font-bold text-[28px] tracking-[0.015em] text-[#0b0f19] dark:text-white transition-opacity group-hover:opacity-85">
+                  STAT6
+                </span>
+                <span className="font-brand font-semibold text-[17px] text-[#2563eb] tracking-wide">
+                  BMS
+                </span>
+              </div>
+            </button>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-black/5 dark:border-white/10 font-semibold">
+              v2.4
+            </span>
+          </div>
+
+          {/* Quick Nav Anchors */}
+          <nav className="hidden lg:flex items-center gap-7 text-[13.5px] font-medium text-[#0b0f19]/70 dark:text-white/70">
+            <a href="#overview" className="hover:text-[#0b0f19] dark:hover:text-white transition">Platform Overview</a>
+            <a href="#modules" className="hover:text-[#0b0f19] dark:hover:text-white transition">14 Modules</a>
+            <a href="#portals" className="hover:text-[#0b0f19] dark:hover:text-white transition">7 RBAC Portals</a>
+            <button
+              onClick={() => setShowContractModal(true)}
+              className="hover:text-[#0b0f19] dark:hover:text-white transition cursor-pointer"
+            >
+              Enterprise MSA
             </button>
           </nav>
         </div>
 
         {/* Right Nav Action Pills */}
         <div className="flex items-center gap-3">
-          {/* Free invoice generator pill */}
+          {/* Live OAuth indicator pill */}
           <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-3.5 py-1.5 text-xs font-sans text-[#0b0f19] dark:text-white/90 shadow-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="font-medium">Free invoice generator</span>
-            <ArrowRight size={12} className="-rotate-45 text-black/50 dark:text-white/50" />
+            <span className="font-medium">Native OAuth 2.0 Active</span>
+            <ShieldCheck size={13} className="text-emerald-500" />
           </div>
 
-          {/* Book a call / Launch BMS CTA */}
+          {/* 1-Click Role Presets */}
+          <button
+            onClick={() => { setAuthTab('presets'); setAuthDrawerOpen(true); }}
+            className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-black/15 dark:border-white/20 hover:bg-black/5 dark:hover:bg-white/5 font-sans font-semibold text-xs text-[#0b0f19] dark:text-white transition cursor-pointer"
+          >
+            <Users size={13} className="text-purple-500" />
+            <span>Role Presets</span>
+          </button>
+
+          {/* Sign In CTA */}
           <button
             onClick={() => { setAuthTab('signin'); setAuthDrawerOpen(true); }}
             className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full bg-[#fce7f3] dark:bg-[#be185d]/30 text-[#be185d] dark:text-pink-300 hover:bg-[#fbcfe8] dark:hover:bg-[#be185d]/50 font-semibold text-xs transition cursor-pointer shadow-xs"
           >
-            <span>Book a call</span>
+            <span>Sign In to BMS</span>
             <ArrowRight size={12} className="-rotate-45" />
           </button>
 
@@ -387,52 +436,53 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
       </header>
 
       {/* ---------------------------------------------------- */}
-      {/* 2. HERO SECTION (MATCHING SCREENSHOT LAYOUT & FONT)   */}
+      {/* 2. HERO SECTION (100% STAT6 BMS COPY & STYLE)       */}
       {/* ---------------------------------------------------- */}
-      <main className="flex-1 w-full max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-20 py-10 sm:py-16">
+      <main id="overview" className="flex-1 w-full max-w-[1400px] mx-auto px-6 sm:px-12 xl:px-20 py-10 sm:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-start">
           
-          {/* LEFT COLUMN: HERO HEADLINE & VALUE PROPOSITION */}
+          {/* LEFT COLUMN: STAT6 BMS HERO COPY & VALUE PROPOSITION */}
           <div className="lg:col-span-6 flex flex-col items-start text-left pt-2">
             
-            {/* Top Status Pill: • STAT6 BMS Launching soon · Join the waitlist → */}
+            {/* Top Announcement Pill */}
             <button
               onClick={() => { setAuthTab('signup'); setAuthDrawerOpen(true); }}
-              className="group inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/15 bg-white/90 dark:bg-white/5 px-3 py-1 font-mono text-xs text-[#0b0f19] dark:text-white/85 hover:border-black/25 dark:hover:border-white/30 transition shadow-xs cursor-pointer"
+              className="group inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/15 bg-white/90 dark:bg-white/5 px-3.5 py-1 font-mono text-xs text-[#0b0f19] dark:text-white/85 hover:border-black/25 dark:hover:border-white/30 transition shadow-xs cursor-pointer"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <span className="font-brand font-semibold text-[13px] tracking-wide">STAT6</span>
-              <span className="font-semibold px-1 py-0.2 rounded bg-black/5 dark:bg-white/10 text-[10.5px]">BMS</span>
-              <span className="text-[#0b0f19]/60 dark:text-white/60">Launching soon · Join the waitlist</span>
+              <span className="font-semibold px-1 py-0.2 rounded bg-black/5 dark:bg-white/10 text-[10.5px]">BMS v2.4</span>
+              <span className="text-[#0b0f19]/60 dark:text-white/60">Sovereign Business Operating System</span>
               <ArrowRight size={13} className="text-[#0b0f19]/50 dark:text-white/50 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
-            {/* Signature H1 Headline with exact line breaks, font-display, and colors */}
+            {/* Signature H1 Headline with exact font-display, leading, and colors */}
             <h1 className="mt-8 font-display text-4xl sm:text-5xl lg:text-[58px] xl:text-[64px] font-semibold leading-[1.04] tracking-[-0.04em] text-[#0b0f19] dark:text-white">
-              <span className="block">Custom software</span>
-              <span className="block">and AI agents</span>
+              <span className="block">One sovereign</span>
+              <span className="block">operating system</span>
               <span className="block">
-                that <span className="text-[#ec4899] font-bold">10×</span>
+                replacing <span className="text-[#ec4899] font-bold">14 tools</span>
               </span>
-              <span className="block">your revenue</span>
+              <span className="block">with private AI</span>
               <span className="block">
-                in <span className="text-[#2563eb] font-bold">less time.</span>
+                and <span className="text-[#2563eb] font-bold">strict RBAC.</span>
               </span>
             </h1>
 
             {/* Subtitle paragraph in clean font-sans */}
             <p className="mt-6 max-w-[520px] text-[15px] sm:text-[16.5px] text-[#0b0f19]/70 dark:text-white/70 font-sans leading-relaxed">
-              <span className="font-brand font-bold text-[#0b0f19] dark:text-white">STAT6</span> is a software studio. We design and build the custom software your business runs on, then connect AI agents, automation and integrations so the busywork runs itself. And we build the website that brings the customers in.
+              <span className="font-brand font-bold text-[#0b0f19] dark:text-white">STAT6 BMS</span> is an enterprise business management system. We unify Commercial CRM, Finance &amp; Double-Entry Ledger, HR &amp; Payroll, Jira Agile Sprints, Inventory, and Free External Portals into a self-hosted private architecture with zero 3rd-party data leakage.
             </p>
 
-            {/* Feature Pills Matching Screenshot */}
+            {/* Feature Pills Matching BMS Modules */}
             <div className="flex flex-wrap items-center gap-2 pt-6">
               {[
-                { label: 'Custom software', color: 'bg-[#ec4899]' },
-                { label: 'AI agents', color: 'bg-[#3b82f6]' },
-                { label: 'AI automation', color: 'bg-[#a855f7]' },
-                { label: 'AI integration', color: 'bg-[#10b981]' },
-                { label: 'Websites', color: 'bg-[#f59e0b]' }
+                { label: 'Commercial CRM', color: 'bg-[#ec4899]' },
+                { label: 'Finance & Invoices', color: 'bg-[#2563eb]' },
+                { label: 'Jira Agile Sprints', color: 'bg-[#0284c7]' },
+                { label: 'HR & Payroll', color: 'bg-[#10b981]' },
+                { label: 'Supply Chain & POs', color: 'bg-[#f59e0b]' },
+                { label: '7 RBAC Portals', color: 'bg-[#8b5cf6]' }
               ].map(tag => (
                 <div
                   key={tag.label}
@@ -444,13 +494,13 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
               ))}
             </div>
 
-            {/* Direct Portal Launch Buttons */}
+            {/* Direct BMS Portal Launch CTAs */}
             <div className="flex flex-wrap items-center gap-3.5 pt-8">
               <button
                 onClick={() => { setAuthTab('signin'); setAuthDrawerOpen(true); }}
                 className="px-6 py-3 rounded-full bg-[#0b0f19] hover:bg-black text-white dark:bg-white dark:text-black dark:hover:bg-slate-200 font-sans font-semibold text-xs tracking-tight transition cursor-pointer flex items-center gap-2 shadow-md"
               >
-                <span>Launch Enterprise BMS Portal</span>
+                <span>Launch Enterprise BMS Workspace</span>
                 <ArrowRight size={14} />
               </button>
 
@@ -467,63 +517,63 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
                 className="px-4 py-3 text-xs font-sans font-medium text-slate-500 dark:text-slate-400 hover:text-[#0b0f19] dark:hover:text-white transition cursor-pointer flex items-center gap-1"
               >
                 <FileText size={13} />
-                <span>View MSA Contract</span>
+                <span>View Legal MSA Contract</span>
               </button>
             </div>
 
           </div>
 
-          {/* RIGHT COLUMN: INTERACTIVE BROWSER MOCKUP (MATCHING SCREENSHOT) */}
+          {/* RIGHT COLUMN: STAT6 BMS WORKSPACE MOCKUP */}
           <div className="lg:col-span-6 w-full flex justify-center lg:justify-end">
             <div className="w-full max-w-[580px] rounded-3xl border border-black/[0.08] dark:border-white/[0.12] bg-white/70 dark:bg-[#0e1424]/70 backdrop-blur-xl shadow-[0_24px_70px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.06)] overflow-hidden">
               
               {/* Window Title Bar */}
               <div className="px-4 py-3 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f8fafc]/80 dark:bg-[#070b14]/80">
-                {/* Traffic Light Buttons */}
+                {/* Traffic Light Window Controls */}
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-[#f87171]"></div>
                   <div className="w-2.5 h-2.5 rounded-full bg-[#fbbf24]"></div>
                   <div className="w-2.5 h-2.5 rounded-full bg-[#34d399]"></div>
                 </div>
 
-                {/* Address Bar Pill: 🔒 stat6.si × your business */}
+                {/* Address Bar Pill: 🔒 bms.stat6.enterprise × unified workspace */}
                 <div className="px-3 py-1 rounded-full bg-white dark:bg-white/10 border border-black/5 dark:border-white/10 text-[11px] font-mono text-slate-600 dark:text-slate-300 flex items-center gap-1.5 shadow-2xs">
-                  <Lock size={10} className="text-slate-400" />
-                  <span>stat6.si × your business</span>
+                  <Lock size={10} className="text-emerald-500" />
+                  <span>bms.stat6.enterprise × unified workspace</span>
                 </div>
 
                 <div className="w-10"></div>
               </div>
 
-              {/* Window Body: 2 Mockup Columns */}
+              {/* Window Body: 2 BMS Live Cards */}
               <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                 
-                {/* CARD 1: WHAT WE BUILD */}
+                {/* CARD 1: ENTERPRISE OPERATIONS & TELEMETRY */}
                 <div className="relative rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#11192e] p-4 flex flex-col justify-between shadow-xs">
                   
-                  {/* Handwritten Callout: Replaces 7 tools */}
+                  {/* Handwritten Callout: Replaces 14 SaaS tools */}
                   <div className="absolute -top-3.5 right-2 z-10">
-                    <span className="font-hand text-[#ec4899] font-bold text-[21px] rotate-[-5deg] inline-block tracking-normal select-none">
-                      Replaces 7 tools
+                    <span className="font-hand text-[#ec4899] font-bold text-[20px] rotate-[-5deg] inline-block tracking-normal select-none">
+                      Replaces 14 SaaS tools
                     </span>
                   </div>
 
                   <div>
-                    {/* Header Label: WHAT WE BUILD */}
+                    {/* Header Label: ENTERPRISE OPERATIONS */}
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-mono text-[9.5px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1">
                         <Layers size={11} />
-                        WHAT WE BUILD
+                        ENTERPRISE OPERATIONS
                       </span>
                       <span className="font-mono text-[9.5px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-semibold">
-                        CUSTOM SOFTWARE
+                        14 SERVICES UP
                       </span>
                     </div>
 
-                    {/* Orders Header + Live Pill */}
+                    {/* Commercial & Ops Header + Live Pill */}
                     <div className="flex items-center justify-between mt-2 mb-3">
                       <span className="font-display font-semibold text-lg text-[#0b0f19] dark:text-white">
-                        Orders
+                        Platform Telemetry
                       </span>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-sans text-[10.5px] font-semibold">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -534,16 +584,16 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
                     {/* Metric Row */}
                     <div className="grid grid-cols-3 gap-2 py-2 border-y border-black/[0.04] dark:border-white/[0.06] font-sans">
                       <div>
-                        <div className="text-[9.5px] font-mono text-slate-400 uppercase">Revenue</div>
-                        <div className="font-display font-bold text-sm text-[#0b0f19] dark:text-white">$418k</div>
+                        <div className="text-[9.5px] font-mono text-slate-400 uppercase">Revenue Paid</div>
+                        <div className="font-display font-bold text-sm text-[#0b0f19] dark:text-white">$1.24M</div>
                       </div>
                       <div>
-                        <div className="text-[9.5px] font-mono text-slate-400 uppercase">Open Orders</div>
-                        <div className="font-display font-bold text-sm text-[#0b0f19] dark:text-white">1,093</div>
+                        <div className="text-[9.5px] font-mono text-slate-400 uppercase">Open POs</div>
+                        <div className="font-display font-bold text-sm text-[#0b0f19] dark:text-white">48</div>
                       </div>
                       <div>
-                        <div className="text-[9.5px] font-mono text-slate-400 uppercase">On Time</div>
-                        <div className="font-display font-bold text-sm text-emerald-600 dark:text-emerald-400">96.3%</div>
+                        <div className="text-[9.5px] font-mono text-slate-400 uppercase">Uptime SLA</div>
+                        <div className="font-display font-bold text-sm text-emerald-600 dark:text-emerald-400">99.95%</div>
                       </div>
                     </div>
 
@@ -570,37 +620,37 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
                     </div>
                   </div>
 
-                  {/* Bottom AI Status Card */}
+                  {/* Bottom Real-time Microservice Status */}
                   <div className="mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-[#070b14] border border-black/[0.05] dark:border-white/[0.06] space-y-1.5 text-[11px] font-sans">
                     <div className="flex items-center justify-between font-mono text-[9.5px] text-slate-400">
-                      <span className="font-semibold text-pink-600 dark:text-pink-400">AI AGENT</span>
+                      <span className="font-semibold text-pink-600 dark:text-pink-400">BMS ENGINE</span>
                       <span className="flex items-center gap-1 text-emerald-600">
-                        <span className="w-1 h-1 rounded-full bg-emerald-500"></span> working
+                        <span className="w-1 h-1 rounded-full bg-emerald-500"></span> active
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 text-[10.5px]">
                       <span className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-[9px] font-bold">✓</span>
-                      <span>Reading the inbox</span>
+                      <span>Reconciled $84,200 Invoice Journal</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 text-[10.5px]">
                       <span className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-[9px] font-bold">✓</span>
-                      <span>Matching PO-7714</span>
+                      <span>Enforced Vendor Portal RBAC Policy</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 text-[10.5px]">
                       <span className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-[9px] font-bold">✓</span>
-                      <span>Drafting the reply</span>
+                      <span>Synced Jira Velocity to Agile Sprint 8</span>
                     </div>
                   </div>
                 </div>
 
-                {/* CARD 2: AI AGENT • LIVE */}
+                {/* CARD 2: GROQ AGENTIC COPILOT • LIVE */}
                 <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#11192e] p-4 flex flex-col justify-between shadow-xs">
                   <div>
                     {/* Header */}
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-mono text-[9.5px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1">
                         <Bot size={11} className="text-purple-500" />
-                        AI AGENT • LIVE
+                        STAT6 COPILOT • REALTIME
                       </span>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-sans text-[10.5px] font-semibold">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -610,37 +660,37 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
 
                     {/* User Prompt Bubble in Dark Navy */}
                     <div className="p-3 rounded-xl bg-[#0b0f19] dark:bg-[#070b14] text-white text-[12px] font-sans font-medium leading-snug mb-3 shadow-xs">
-                      "Process this order email, update our ERP and book the carrier."
+                      "Reconcile Q4 invoices, compile general ledger, and trigger manager approval."
                     </div>
 
                     {/* Assistant Response Box */}
                     <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#162340]/60 border border-black/[0.05] dark:border-white/[0.06] space-y-2">
                       <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#ec4899]">
                         <span className="w-2 h-2 rounded-full bg-[#ec4899]"></span>
-                        <span>Assistant</span>
+                        <span>BMS Copilot</span>
                       </div>
                       <p className="text-[11.5px] text-slate-700 dark:text-slate-200 font-sans leading-snug">
-                        Done. I matched <span className="px-1 py-0.2 rounded bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 font-semibold font-mono text-[10.5px]">PO-7714</span> from <span className="px-1 py-0.2 rounded bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 font-semibold font-mono text-[10.5px]">Coastline Freight</span>, reserved stock in the ERP and drafted the invoice. Total <span className="font-bold font-mono">$4,212.80</span>, waiting for your approval.
+                        Done. Reconciled 14 journal entries, confirmed <span className="px-1 py-0.2 rounded bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 font-semibold font-mono text-[10.5px]">$84,200</span> accounts payable, drafted balance statement, and queued Department Manager approval <span className="px-1 py-0.2 rounded bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 font-semibold font-mono text-[10.5px]">#APP-104</span>.
                       </p>
                     </div>
                   </div>
 
-                  {/* Step Completion Timings Matching Screenshot */}
+                  {/* Step Completion Timings */}
                   <div className="mt-3 pt-2 border-t border-black/[0.04] dark:border-white/[0.06] space-y-1.5 text-[10.5px] font-sans">
                     <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                       <span className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Read the email from Coastline Freight
+                        Cryptographic ledger audit hash verified
                       </span>
-                      <span className="font-mono text-slate-400 text-[10px]">0.4s</span>
+                      <span className="font-mono text-slate-400 text-[10px]">0.2s</span>
                     </div>
 
                     <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                       <span className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Extracted PO-7714 and 14 line items
+                        Department Manager RBAC scope enforced
                       </span>
-                      <span className="font-mono text-slate-400 text-[10px]">0.9s</span>
+                      <span className="font-mono text-slate-400 text-[10px]">0.5s</span>
                     </div>
                   </div>
                 </div>
@@ -667,10 +717,129 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
           </div>
 
         </div>
+
+        {/* ---------------------------------------------------- */}
+        {/* 3. 14 UNIFIED BMS MODULES SHOWCASE SECTION           */}
+        {/* ---------------------------------------------------- */}
+        <section id="modules" className="pt-20 sm:pt-28 text-left">
+          <div className="flex flex-col items-start gap-2 mb-10">
+            <span className="font-mono text-xs uppercase text-slate-400 font-bold tracking-wider">
+              ✦ UNIFIED ARCHITECTURE
+            </span>
+            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-[-0.035em] text-[#0b0f19] dark:text-white">
+              All 14 Business Modules in One Sovereign Ecosystem
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl font-sans">
+              No multiple subscriptions, no fragmented APIs, and zero third-party cloud vulnerabilities. Everything operates under a shared PostgreSQL schema with strict RBAC boundary checks.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {bmsModules.map(mod => {
+              const Icon = mod.icon;
+              return (
+                <div
+                  key={mod.id}
+                  className="p-4 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#11192e] hover:border-black/20 dark:hover:border-white/20 transition-all shadow-xs group"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/10 flex items-center justify-center">
+                      <Icon size={16} className={mod.color} />
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase">
+                      Module
+                    </span>
+                  </div>
+                  <h3 className="font-display font-semibold text-sm text-[#0b0f19] dark:text-white mb-1 tracking-tight">
+                    {mod.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug font-sans">
+                    {mod.desc}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------- */}
+        {/* 4. 7 RBAC ROLES & EXTERNAL PORTALS SECTION           */}
+        {/* ---------------------------------------------------- */}
+        <section id="portals" className="pt-20 sm:pt-28 text-left">
+          <div className="flex flex-col items-start gap-2 mb-10">
+            <span className="font-mono text-xs uppercase text-slate-400 font-bold tracking-wider">
+              ✦ CRYPTOGRAPHIC RBAC
+            </span>
+            <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-[-0.035em] text-[#0b0f19] dark:text-white">
+              7 Dedicated Roles &amp; Zero-Trust External Portals
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl font-sans">
+              Credentials determine the workspace directly at authentication. No in-app switcher to compromise governance boundaries.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {personaCards.map(card => (
+              <div
+                key={card.persona}
+                className="p-5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#11192e] flex flex-col justify-between shadow-xs"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 font-semibold">
+                      {card.badge}
+                    </span>
+                    <span className="font-mono text-[10px] text-emerald-500 font-bold">
+                      RBAC Verified
+                    </span>
+                  </div>
+                  <h3 className="font-display font-semibold text-base text-[#0b0f19] dark:text-white mb-1.5">
+                    {card.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans mb-3">
+                    {card.desc}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handlePresetSelect(card)}
+                  disabled={isLoading}
+                  className="mt-2 w-full py-2 rounded-xl border border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 font-sans font-semibold text-xs text-[#0b0f19] dark:text-white transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>1-Click Login</span>
+                  <ArrowRight size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+
       </main>
 
       {/* ---------------------------------------------------- */}
-      {/* 3. NATIVE OAUTH & RBAC AUTH DRAWER / MODAL           */}
+      {/* 5. FOOTER                                            */}
+      {/* ---------------------------------------------------- */}
+      <footer className="mt-20 border-t border-black/[0.06] dark:border-white/[0.08] py-8 px-6 sm:px-12 xl:px-20 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-sans gap-4">
+        <div className="flex items-center gap-2">
+          <span className="font-brand font-bold text-lg text-[#0b0f19] dark:text-white">STAT6</span>
+          <span className="font-brand font-semibold text-sm text-[#2563eb]">BMS</span>
+          <span className="text-slate-400">· Sovereign Business Operating System</span>
+        </div>
+
+        <div className="flex items-center gap-6">
+          <button onClick={() => setShowContractModal(true)} className="hover:underline cursor-pointer">
+            Master Services Agreement (MSA)
+          </button>
+          <button onClick={() => setShowContractModal(true)} className="hover:underline cursor-pointer">
+            Data Processing Addendum (DPA)
+          </button>
+          <span className="font-mono text-[11px]">v2.4 Enterprise Edition</span>
+        </div>
+      </footer>
+
+      {/* ---------------------------------------------------- */}
+      {/* 6. NATIVE OAUTH & RBAC AUTH DRAWER / MODAL           */}
       {/* ---------------------------------------------------- */}
       {authDrawerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
@@ -681,6 +850,9 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
               <div className="flex items-center gap-2.5">
                 <span className="font-brand font-bold text-2xl tracking-wide text-slate-900 dark:text-white">
                   STAT6
+                </span>
+                <span className="font-brand font-bold text-xl text-[#2563eb]">
+                  BMS
                 </span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 font-semibold">
                   Native OAuth 2.0 Gate
@@ -952,7 +1124,7 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
       )}
 
       {/* ---------------------------------------------------- */}
-      {/* 4. MASTER SERVICES AGREEMENT (MSA) LEGAL CONTRACT MODAL */}
+      {/* 7. MASTER SERVICES AGREEMENT (MSA) LEGAL CONTRACT MODAL */}
       {/* ---------------------------------------------------- */}
       {showContractModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
