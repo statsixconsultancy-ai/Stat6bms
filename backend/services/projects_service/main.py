@@ -165,8 +165,13 @@ def list_tasks(
 
 @app.post("/projects/tasks", response_model=TaskResponse)
 def create_task(req: TaskCreate, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    project = db.query(Project).filter_by(id=req.project_id).first()
+    prefix = project.code if project else "TSK"
     seq = db.query(Task).filter_by(project_id=req.project_id).count() + 1
-    task_key = req.task_key or f"TSK-{seq:03d}"
+    task_key = req.task_key or f"{prefix}-{seq:03d}"
+    while db.query(Task).filter_by(task_key=task_key).first():
+        seq += 1
+        task_key = f"{prefix}-{seq:03d}"
 
     task = Task(
         id=str(uuid.uuid4()),

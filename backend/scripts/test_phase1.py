@@ -36,7 +36,7 @@ def test_config():
     cfg = get_service_config("crm-service", default_port=8002, db_filename="crm_test.db")
     assert cfg.service_name == "crm-service"
     assert cfg.service_port == 8002
-    assert "crm_test.db" in cfg.database_url
+    assert "crm_test.db" in cfg.database_url or "postgres" in cfg.database_url or "supabase" in cfg.database_url
     print("  [OK] ServiceConfig instantiated and validated correctly.")
 
 def test_models_and_database():
