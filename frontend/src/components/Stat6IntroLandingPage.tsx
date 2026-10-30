@@ -755,13 +755,13 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
           ref={h1Ref}
           className="absolute top-[21.5vh] left-[clamp(20px,5.7vw,82px)] font-normal text-[clamp(34px,4.65vw,70px)] leading-[1.03] tracking-[-0.035em] text-[#0b1d3a] whitespace-nowrap z-2"
         >
-          Meet <span className="hl">STAT6 BMS</span>, your AI teammate<br />
-          where we shall collaborate
+          Meet <span className="hl">STAT6 BMS</span>, the business operating system<br />
+          built so we shall collaborate
         </h1>
 
         {/* Trust line */}
         <p className="absolute top-[58vh] left-[clamp(20px,5.7vw,82px)] text-[clamp(15px,1.28vw,19px)] tracking-[-0.015em] text-[#1d2f4f] z-2">
-          Port operators and global enterprises trust STAT6 BMS
+          Modern enterprises and global supply chains trust STAT6 BMS
         </p>
 
         {/* Large "Get a demo" Button with Signature Dot-to-Arrow Effect */}
@@ -869,10 +869,10 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
             ref={stmtRef}
             className="absolute top-[41.5vh] left-0 right-0 text-center font-normal text-[clamp(20px,2.8vw,42px)] leading-[1.16] tracking-[-0.03em] text-[#0b1d3a] whitespace-nowrap will-change-transform px-6"
           >
-            STAT6 BMS is your AI teammate <br />
-            that tracks vessels, books berths, reconciles invoices, <br />
-            coordinates logistics, and ensures we shall collaborate <br />
-            to keep every port and enterprise moving forward
+            STAT6 BMS is your unified business management system <br />
+            that connects commercial CRM, financial ledgers, <br />
+            HR payroll, agile sprints, and vendor portals, <br />
+            ensuring that across every department, we shall collaborate
           </p>
         </div>
       </section>
@@ -895,7 +895,7 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
             ref={h2Ref}
             className="font-normal text-[clamp(32px,3.15vw,48px)] leading-[1.08] tracking-[-0.03em] pt-[21vh] pl-[6.2vw] text-white"
           >
-            AI teammate that operates<br />like you work
+            Enterprise operations that run<br />the way your business works
           </h2>
 
           {/* Ruled Row that fades up */}
@@ -904,11 +904,11 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
             className="mt-[6.4vh] border-t border-white/[0.12] grid grid-cols-1 md:grid-cols-[1fr_1.05fr] gap-6 pt-[3vh] pl-[6.2vw] pr-[6vw] transition-all duration-900 opacity-0 translate-y-3.5"
           >
             <h3 className="font-normal text-[clamp(17px,1.4vw,21px)] tracking-tight text-white">
-              Port &amp; Enterprise Operators
+              Unified Operations &amp; Governance
             </h3>
             <p className="text-[clamp(13px,1.1vw,16px)] leading-[1.38] text-white/50 max-w-[20em]">
-              <strong className="text-white font-medium">Berth faster. Reconcile ledger. Stop chasing manifests.</strong>{' '}
-              STAT6 BMS runs scheduling, bookings, customs filings, ERP synchronization, and automated approvals — so your team stays focused on throughput, governance, and collaboration.
+              <strong className="text-white font-medium">Reconcile faster. Unify approvals. Eliminate fragmented SaaS silos.</strong>{' '}
+              STAT6 BMS brings sales pipeline, double-entry accounting, agile delivery, and vendor management into a single sovereign platform with cryptographic RBAC and zero 3rd-party data leakage.
             </p>
           </div>
 
