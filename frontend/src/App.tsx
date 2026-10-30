@@ -37,7 +37,9 @@ import {
   Play,
   Menu,
   LogOut,
-  UserCheck
+  UserCheck,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { OmniCopilotDock, CopilotMessage } from './components/OmniCopilotDock';
 import { GeminiMarkdownRenderer } from './components/GeminiMarkdownRenderer';
@@ -144,7 +146,27 @@ interface JiraIssue {
 }
 
 export default function App() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('stat6_theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('stat6_theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('stat6_theme', 'light');
+      }
+    } catch {}
+  }, [isDarkMode]);
   const [activeTab, setActiveTab] = useState<ActiveTab>('leads');
   const [salesExpanded, setSalesExpanded] = useState(true);
   const [operationsExpanded, setOperationsExpanded] = useState(true);
@@ -1491,9 +1513,21 @@ export default function App() {
             </span>
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="text-white hover:underline text-[11px]"
+              className="p-1 px-2 rounded-lg bg-slate-800/90 hover:bg-slate-700/90 text-slate-300 hover:text-white transition flex items-center gap-1.5 text-xs font-mono cursor-pointer border border-slate-700/70 shadow-xs"
+              title={isDarkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
+              aria-label="Toggle theme"
             >
-              {isDarkMode ? 'Light' : 'Dark'}
+              {isDarkMode ? (
+                <>
+                  <Sun size={13} className="text-amber-400" />
+                  <span className="text-[11px] font-sans font-medium">Light</span>
+                </>
+              ) : (
+                <>
+                  <Moon size={13} className="text-blue-400" />
+                  <span className="text-[11px] font-sans font-medium">Dark</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -1565,8 +1599,17 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition cursor-pointer flex items-center justify-center shadow-xs"
+              title={isDarkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
+              aria-label="Toggle dark/light theme"
+            >
+              {isDarkMode ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-slate-600 dark:text-slate-300" />}
+            </button>
+
+            <button
               onClick={refreshAllData}
-              className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-black dark:text-white hover:bg-slate-50 font-normal cursor-pointer"
+              className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-xs text-black dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 font-normal cursor-pointer"
             >
               Refresh
             </button>

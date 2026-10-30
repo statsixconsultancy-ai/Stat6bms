@@ -2232,14 +2232,14 @@ export const AnalyticsModuleWorkspace: React.FC<WorkspaceProps & { overviewData:
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto text-black dark:text-white">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Executive BI Telemetry, Cross-Module Matrix &amp; Custom Report Builder</h1>
-          <p className="text-xs text-slate-500">Replaces Zoho Analytics &amp; Zoho One Spaces with Zero-Sync Canonical SQL Joins</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Executive BI Telemetry, Cross-Module Matrix &amp; Custom Report Builder</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Replaces Zoho Analytics &amp; Zoho One Spaces with Zero-Sync Canonical SQL Joins</p>
         </div>
         <div className="flex gap-1.5 text-xs">
           {(['executive', 'matrix', 'builder'] as const).map(t => (
-            <button key={t} onClick={() => setSubTab(t)} className={`px-3 py-1.5 rounded-lg capitalize cursor-pointer ${subTab === t ? 'bg-[#2563eb] text-white' : 'bg-white dark:bg-slate-800 border'}`}>
+            <button key={t} onClick={() => setSubTab(t)} className={`px-3 py-1.5 rounded-lg capitalize cursor-pointer font-medium transition ${subTab === t ? 'bg-[#2563eb] text-white shadow-xs' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'}`}>
               {t === 'executive' ? 'Executive & Predictive Forecast' : t === 'matrix' ? 'Cross-Module 360 Matrix' : 'Custom Report Builder'}
             </button>
           ))}
@@ -2247,32 +2247,32 @@ export const AnalyticsModuleWorkspace: React.FC<WorkspaceProps & { overviewData:
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200"><div className="text-xs text-slate-500">Paid Revenue</div><div className="text-xl mt-1 font-mono font-bold text-emerald-700">{fmt(exec.paid_revenue ?? kpis.total_revenue_paid ?? 0)}</div></div>
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200"><div className="text-xs text-slate-500">Weighted Pipeline</div><div className="text-xl mt-1 font-mono font-bold">{fmt(exec.weighted_pipeline ?? kpis.total_pipeline ?? 0)}</div></div>
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200"><div className="text-xs text-slate-500">Rev / Employee</div><div className="text-xl mt-1 font-mono font-bold">{fmt(exec.revenue_per_employee ?? 0)}</div></div>
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200"><div className="text-xs text-slate-500">Inventory Value</div><div className="text-xl mt-1 font-mono font-bold">{fmt(exec.inventory_valuation ?? 0)}</div></div>
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200"><div className="text-xs text-slate-500">Committed POs</div><div className="text-xl mt-1 font-mono font-bold">{fmt(exec.procurement_committed ?? 0)}</div></div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 dark:border-slate-800 shadow-xs"><div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Paid Revenue</div><div className="text-xl mt-1 font-mono font-bold text-emerald-600 dark:text-emerald-400">{fmt(exec.paid_revenue ?? kpis.total_revenue_paid ?? 0)}</div></div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 dark:border-slate-800 shadow-xs"><div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Weighted Pipeline</div><div className="text-xl mt-1 font-mono font-bold text-slate-900 dark:text-white">{fmt(exec.weighted_pipeline ?? kpis.total_pipeline ?? 0)}</div></div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 dark:border-slate-800 shadow-xs"><div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Rev / Employee</div><div className="text-xl mt-1 font-mono font-bold text-slate-900 dark:text-white">{fmt(exec.revenue_per_employee ?? 0)}</div></div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 dark:border-slate-800 shadow-xs"><div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Inventory Value</div><div className="text-xl mt-1 font-mono font-bold text-slate-900 dark:text-white">{fmt(exec.inventory_valuation ?? 0)}</div></div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#131c2e] border border-slate-200 dark:border-slate-800 shadow-xs"><div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Committed POs</div><div className="text-xl mt-1 font-mono font-bold text-slate-900 dark:text-white">{fmt(exec.procurement_committed ?? 0)}</div></div>
       </div>
 
       {subTab === 'executive' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white dark:bg-[#131c2e] p-4 rounded-2xl border border-slate-200 space-y-3">
-            <h3 className="text-sm font-bold border-b pb-2">Predictive 3-Month Revenue &amp; Cash-Flow Projection</h3>
+          <div className="bg-white dark:bg-[#131c2e] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
+            <h3 className="text-sm font-bold border-b border-slate-200 dark:border-slate-800 pb-2 text-slate-900 dark:text-white">Predictive 3-Month Revenue &amp; Cash-Flow Projection</h3>
             <div className="space-y-2 text-xs font-mono">
               {(biData?.predictive_forecast || []).map((f: any, idx: number) => (
-                <div key={idx} className="p-2.5 rounded-xl border bg-slate-50 dark:bg-slate-900 flex items-center justify-between">
-                  <span className="font-bold">{f.period}</span>
+                <div key={idx} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex items-center justify-between">
+                  <span className="font-bold text-slate-900 dark:text-white">{f.period}</span>
                   <div>
-                    <span className="text-emerald-700 font-bold">{fmt(f.projected)}</span>
-                    <span className="text-[10px] text-slate-500 ml-2">Band: [{fmt(f.confidence_low)} – {fmt(f.confidence_high)}]</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">{fmt(f.projected)}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 ml-2">Band: [{fmt(f.confidence_low)} – {fmt(f.confidence_high)}]</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#131c2e] p-4 rounded-2xl border border-slate-200 space-y-3">
-            <h3 className="text-sm font-bold border-b pb-2">Department Headcount &amp; Payroll Allocation</h3>
+          <div className="bg-white dark:bg-[#131c2e] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
+            <h3 className="text-sm font-bold border-b border-slate-200 dark:border-slate-800 pb-2 text-slate-900 dark:text-white">Department Headcount &amp; Payroll Allocation</h3>
             <div className="divide-y text-xs">
               {(biData?.department_allocation || []).map((d: any, idx: number) => (
                 <div key={idx} className="py-2.5 flex justify-between">

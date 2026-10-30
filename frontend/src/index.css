@@ -17,10 +17,10 @@
     --font-hand: 'Caveat', 'Segoe Print', cursive;
     --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
     
-    /* All texts in pure black as requested */
+    /* All texts in pure black for light mode */
     --t1: #000000;
-    --t2: #000000;
-    --t3: #000000;
+    --t2: #1e293b;
+    --t3: #475569;
   }
   
   .dark {
@@ -31,11 +31,12 @@
     --t1: #ffffff;
     --t2: #cbd5e1;
     --t3: #94a3b8;
+    color-scheme: dark;
   }
 
   body {
     background-color: var(--bg-main);
-    color: #000000;
+    color: var(--t1);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -43,13 +44,65 @@
     letter-spacing: -0.015em;
   }
 
+  .dark body {
+    background-color: #0b1120;
+    color: #f8fafc;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     letter-spacing: -0.035em;
-    color: #000000;
+    color: var(--t1);
     font-weight: 600;
     text-wrap: balance;
   }
+
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6 {
+    color: #ffffff !important;
+  }
+
+  .dark p {
+    color: inherit;
+  }
+
+  .dark input,
+  .dark select,
+  .dark textarea {
+    background-color: #1a2744;
+    color: #ffffff !important;
+    border-color: #2e3e60;
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #64748b;
+  }
+}
+
+/* High-Contrast Visibility Optimizations for Dark Mode */
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .border-slate-200 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .border-slate-300 {
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 .font-brand {

@@ -31,7 +31,9 @@ import {
   Package,
   ShoppingCart,
   Headphones,
-  Sliders
+  Sliders,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { GeminiSparkleIcon } from './GeminiIcons';
 
@@ -726,11 +728,21 @@ export const Stat6IntroLandingPage: React.FC<Stat6IntroLandingPageProps> = ({
           </button>
         </nav>
 
-        {/* Right: Login & Animated Popping Pill */}
-        <div className="flex items-center">
+        {/* Right: Theme Toggle, Login & Animated Popping Pill */}
+        <div className="flex items-center gap-1">
+          {/* Theme Toggle Icon in Floating Pill Navbar */}
+          <button
+            onClick={onToggleDarkMode}
+            className="p-2 rounded-full hover:bg-slate-100 text-[#0b1d3a] transition cursor-pointer flex items-center justify-center mr-1"
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            aria-label="Toggle theme"
+          >
+            {isDarkMode ? <Sun size={16} className="text-amber-500" /> : <Moon size={16} className="text-[#0b1d3a]" />}
+          </button>
+
           <button
             onClick={() => { setAuthTab('signin'); setAuthDrawerOpen(true); }}
-            className="text-[14px] font-medium text-[#0b1d3a] px-3.5 hover:opacity-60 transition cursor-pointer"
+            className="text-[14px] font-medium text-[#0b1d3a] px-3 hover:opacity-60 transition cursor-pointer"
           >
             Login
           </button>
