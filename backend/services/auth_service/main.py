@@ -99,36 +99,60 @@ async def receive_event(event: dict):
 # ----------------------------------------------------
 @app.post("/auth/register", response_model=TokenResponse)
 async def register(req: RegisterRequest, db: Session = Depends(get_db)):
-    """Provision a new multi-tenant organization and initial superuser."""
-    existing_org = db.query(Organization).filter_by(slug=req.org_slug).first()
-    if existing_org:
+    """Provision a new multi-tenant organization and initial superuser, or register a user into the primary tenant."""
+    target_email = (req.admin_email or req.email or "").strip()
+    if not target_email:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Organization with slug '{req.org_slug}' already exists."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email address is required."
         )
+    target_name = (req.admin_name or req.full_name or target_email.split("@")[0]).strip()
 
-    existing_user = db.query(User).filter_by(email=req.admin_email).first()
+    existing_user = db.query(User).filter_by(email=target_email).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"User with email '{req.admin_email}' already registered."
+            detail=f"User with email '{target_email}' already registered."
         )
 
-    org = Organization(
-        name=req.org_name,
-        slug=req.org_slug,
-        currency=req.currency or "USD",
-        timezone=req.timezone or "UTC"
-    )
-    db.add(org)
-    db.flush()
+    if req.org_slug:
+        existing_org = db.query(Organization).filter_by(slug=req.org_slug).first()
+        if existing_org:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Organization with slug '{req.org_slug}' already exists."
+            )
+        org = Organization(
+            name=req.org_name or req.org_slug,
+            slug=req.org_slug,
+            currency=req.currency or "USD",
+            timezone=req.timezone or "UTC"
+        )
+        db.add(org)
+        db.flush()
+        target_role = req.role or "superadmin"
+    else:
+        org = db.query(Organization).filter_by(id="org-acroflow-main").first()
+        if not org:
+            org = db.query(Organization).first()
+        if not org:
+            org = Organization(
+                id="org-acroflow-main",
+                name=req.org_name or "STAT6 Enterprise Corp",
+                slug="stat6-enterprise",
+                currency=req.currency or "USD",
+                timezone=req.timezone or "UTC"
+            )
+            db.add(org)
+            db.flush()
+        target_role = req.role or "admin"
 
     user = User(
         org_id=org.id,
-        email=req.admin_email,
-        full_name=req.admin_name,
+        email=target_email,
+        full_name=target_name,
         password_hash=hash_password(req.password),
-        role="superadmin",
+        role=target_role,
         persona=req.persona if req.persona in USER_PERSONAS else "ADMIN"
     )
     db.add(user)

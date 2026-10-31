@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 
 # --- Department Schemas ---
@@ -39,6 +39,7 @@ class EmployeeResponse(BaseModel):
     id: str
     org_id: str
     user_id: Optional[str] = None
+    employee_code: Optional[str] = None
     first_name: str
     last_name: str
     email: str
@@ -54,7 +55,10 @@ class EmployeeResponse(BaseModel):
 # --- Attendance Schemas ---
 class ClockInRequest(BaseModel):
     employee_id: str
+    date: Optional[str] = None
+    clock_in: Optional[str] = None
     clock_in_time: Optional[str] = None
+    work_mode: Optional[str] = "Office (Geofence Verified)"
     ip_address: Optional[str] = "127.0.0.1"
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -71,6 +75,8 @@ class AttendanceLogResponse(BaseModel):
     clock_in: Optional[str] = None
     clock_out: Optional[str] = None
     work_hours: float
+    hours_logged: float = 8.0
+    work_mode: str = "Office (Geofence Verified)"
     status: str
     ip_address: Optional[str] = "127.0.0.1"
     geofence_verified: Optional[bool] = True
@@ -135,10 +141,15 @@ class PayrollRunResponse(BaseModel):
 
 # --- Statutory Payroll Calculation Engine ---
 class StatutoryPayrollCalculationRequest(BaseModel):
-    basic_salary: float
+    basic_salary: Optional[float] = None
     allowances: Optional[float] = 0.0
+    employee_id: Optional[str] = None
+    pay_period: Optional[str] = "2026-10"
+    regime: Optional[str] = "IN_STATUTORY"
+    bonus: Optional[float] = 0.0
 
 class StatutoryPayrollCalculationResponse(BaseModel):
+    employee_name: Optional[str] = None
     basic_salary: float
     allowances: float
     gross_pay: float
@@ -148,12 +159,19 @@ class StatutoryPayrollCalculationResponse(BaseModel):
     tds_tax: float
     total_deductions: float
     net_pay: float
+    components: Optional[Dict[str, float]] = None
+    deductions: Optional[Dict[str, float]] = None
 
 # --- OKRs & Performance Reviews ---
 class OKRCreate(BaseModel):
-    title: str
-    owner_id: str
+    title: Optional[str] = None
+    objective: Optional[str] = None
+    key_result: Optional[str] = None
+    owner_id: Optional[str] = None
+    employee_id: Optional[str] = None
     quarter: Optional[str] = "Q4-2026"
+    target_value: Optional[float] = 100.0
+    current_value: Optional[float] = 0.0
     key_results: Optional[str] = "[]"
 
 class OKRUpdate(BaseModel):
@@ -167,6 +185,8 @@ class OKRResponse(BaseModel):
     owner_id: str
     quarter: str
     progress_percent: float
+    target_value: float = 100.0
+    current_value: float = 0.0
     status: str
     key_results: str
 
@@ -174,7 +194,11 @@ class OKRResponse(BaseModel):
 class JobOpeningCreate(BaseModel):
     title: str
     department_id: Optional[str] = None
+    department_name: Optional[str] = None
     positions_count: Optional[int] = 1
+    headcount_target: Optional[int] = None
+    salary_band_min: Optional[float] = None
+    salary_band_max: Optional[float] = None
     min_experience_years: Optional[int] = 3
 
 class JobOpeningResponse(BaseModel):
@@ -182,7 +206,11 @@ class JobOpeningResponse(BaseModel):
     org_id: str
     title: str
     department_id: Optional[str] = None
+    department_name: Optional[str] = "Engineering"
     positions_count: int
+    headcount_target: int = 1
+    salary_band_min: float = 120000.0
+    salary_band_max: float = 165000.0
     status: str
     min_experience_years: int
 
@@ -193,6 +221,8 @@ class CandidateCreate(BaseModel):
     email: str
     phone: Optional[str] = None
     resume_url: Optional[str] = None
+    resume_score: Optional[int] = 92
+    stage: Optional[str] = "Screening"
 
 class CandidateStageUpdateRequest(BaseModel):
     stage: str  # Screening, Interview, Offer, Hired
@@ -207,6 +237,7 @@ class CandidateResponse(BaseModel):
     phone: Optional[str] = None
     stage: str
     rating: float
+    resume_score: int = 92
     resume_url: Optional[str] = None
     converted_employee_id: Optional[str] = None
 

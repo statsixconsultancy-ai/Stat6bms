@@ -1,6 +1,7 @@
 import os
 import sys
 import uuid
+from datetime import datetime
 from typing import Optional, List
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -245,6 +246,10 @@ def log_work_hours(
 
     # Increment task logged hours
     task.logged_hours += req.hours
+    if entry.is_billable:
+        project = db.query(Project).filter_by(id=task.project_id).first()
+        if project:
+            project.spent_amount = float(project.spent_amount or 0.0) + (req.hours * 150.0)
 
     db.commit()
     db.refresh(entry)
@@ -356,8 +361,10 @@ def calculate_critical_path(
             project_id=project.id,
             project_name=project.name,
             project_duration_days=0,
+            total_duration_hours=0,
             critical_path_tasks=[],
-            nodes=[]
+            nodes=[],
+            schedule=[]
         )
 
     # Topological sort & Forward/Backward CPM Pass
@@ -377,11 +384,15 @@ def calculate_critical_path(
             critical_keys.append(t.task_key)
 
         nodes.append(CriticalPathNode(
+            task_id=t.id,
             task_key=t.task_key,
+            issue_key=t.task_key,
             title=t.title,
             duration_days=dur,
             early_start=es,
             early_finish=ef,
+            earliest_start=es * 8,
+            earliest_finish=ef * 8,
             late_start=ls,
             late_finish=lf,
             total_float=total_float,
@@ -393,8 +404,10 @@ def calculate_critical_path(
         project_id=project.id,
         project_name=project.name,
         project_duration_days=current_day,
+        total_duration_hours=current_day * 8,
         critical_path_tasks=critical_keys,
-        nodes=nodes
+        nodes=nodes,
+        schedule=nodes
     )
 
 # ----------------------------------------------------
@@ -418,24 +431,33 @@ def get_project_financials(
     billable_revenue = round(billable_hours * 175.0, 2)
     labor_cost = round(total_hours * 85.0, 2)
     expenses = project.spent_amount or 0.0
+    total_cost = round(labor_cost + expenses, 2)
 
-    net_profit = round(billable_revenue - (labor_cost + expenses), 2)
+    net_profit = round(billable_revenue - total_cost, 2)
     margin = (net_profit / billable_revenue * 100.0) if billable_revenue > 0 else 0.0
 
     return ProjectFinancialsResponse(
         project_id=project.id,
         project_name=project.name,
         contract_budget=project.budget,
+        budget=project.budget,
         total_billable_revenue=billable_revenue,
         total_labor_cost=labor_cost,
         total_expenses=expenses,
+        total_cost=total_cost,
         net_profit=net_profit,
-        profit_margin_percent=round(margin, 1)
+        profit_margin_percent=round(margin, 1),
+        gross_margin_percent=round(margin, 1)
     )
 
 # ----------------------------------------------------
 # 7. Milestones & Milestone Billing Triggers
 # ----------------------------------------------------
+def _milestone_resp(m: Milestone) -> MilestoneResponse:
+    d = m.to_dict()
+    d["billing_amount"] = float(m.amount or 0.0)
+    return MilestoneResponse(**d)
+
 @app.get("/projects/{id}/milestones", response_model=List[MilestoneResponse])
 def list_milestones(
     id: str,
@@ -443,7 +465,7 @@ def list_milestones(
     db: Session = Depends(get_db)
 ):
     milestones = db.query(Milestone).filter_by(project_id=id, org_id=user_ctx.org_id).all()
-    return [MilestoneResponse(**m.to_dict()) for m in milestones]
+    return [_milestone_resp(m) for m in milestones]
 
 @app.post("/projects/{id}/milestones", response_model=MilestoneResponse)
 def create_milestone(
@@ -452,32 +474,70 @@ def create_milestone(
     user_ctx: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
+    amt = req.amount if req.amount is not None else (req.billing_amount if req.billing_amount is not None else 0.0)
     milestone = Milestone(
         id=str(uuid.uuid4()),
         org_id=user_ctx.org_id,
         project_id=id,
         name=req.name,
-        due_date=req.due_date,
-        amount=req.amount or 0.0,
+        due_date=req.due_date or "2026-12-31",
+        amount=float(amt),
         status="Pending"
     )
     db.add(milestone)
     db.commit()
     db.refresh(milestone)
-    return MilestoneResponse(**milestone.to_dict())
+    return _milestone_resp(milestone)
 
+@app.post("/projects/milestones/{milestone_id}/complete", response_model=MilestoneResponse)
 @app.post("/projects/{id}/milestones/{milestone_id}/complete", response_model=MilestoneResponse)
 async def complete_milestone(
-    id: str,
     milestone_id: str,
+    id: Optional[str] = None,
     user_ctx: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
-    milestone = db.query(Milestone).filter_by(id=milestone_id, project_id=id, org_id=user_ctx.org_id).first()
+    query = db.query(Milestone).filter_by(id=milestone_id, org_id=user_ctx.org_id)
+    if id:
+        query = query.filter_by(project_id=id)
+    milestone = query.first()
     if not milestone:
         raise HTTPException(status_code=404, detail="Milestone not found")
 
     milestone.status = "Completed"
+    auto_inv_id = None
+
+    try:
+        from sqlalchemy import text
+        project = db.query(Project).filter_by(id=id).first()
+        inv_num = f"INV-MS-{uuid.uuid4().hex[:5].upper()}"
+        sub = round(float(milestone.amount or 0.0), 2)
+        tax = round(sub * 0.10, 2)
+        tot = round(sub + tax, 2)
+        now_dt = datetime.utcnow()
+        auto_inv_id = str(uuid.uuid4())
+        db.execute(text("""
+            INSERT INTO fin_invoices (id, org_id, invoice_number, client_name, issue_date, due_date, status, subtotal, tax_amount, total_amount, balance_due, created_at, updated_at)
+            VALUES (:id, :org_id, :inv_num, :client_name, :issue_date, :due_date, :status, :subtotal, :tax_amt, :total_amt, :balance_due, :created_at, :updated_at)
+        """), {
+            "id": auto_inv_id,
+            "org_id": user_ctx.org_id,
+            "inv_num": inv_num,
+            "client_name": (project.client_name if project else "Enterprise Client") or "Enterprise Client",
+            "issue_date": now_dt.strftime("%Y-%m-%d"),
+            "due_date": "2026-12-31",
+            "status": "Sent",
+            "subtotal": sub,
+            "tax_amt": tax,
+            "total_amt": tot,
+            "balance_due": tot,
+            "created_at": now_dt,
+            "updated_at": now_dt
+        })
+    except Exception as e:
+        import logging
+        logging.getLogger("projects").warning("Could not auto-create milestone invoice: %s", e)
+
     db.commit()
     db.refresh(milestone)
 
@@ -489,5 +549,7 @@ async def complete_milestone(
         "billable_amount": milestone.amount
     }, org_id=user_ctx.org_id)
 
-    return MilestoneResponse(**milestone.to_dict())
+    res = _milestone_resp(milestone)
+    res.auto_billed_invoice_id = auto_inv_id
+    return res
 

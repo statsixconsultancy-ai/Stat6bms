@@ -29,6 +29,11 @@ class ServiceConfig(BaseModel):
     supabase_url: Optional[str] = os.getenv("SUPABASE_URL")
     supabase_key: Optional[str] = os.getenv("SUPABASE_KEY")
 
+DEFAULT_SUPABASE_POOLER_URL = (
+    "postgresql://postgres.pcuyckkvtaekxxbqhdjq:stat6today31"
+    "@aws-0-ap-south-1.pooler.supabase.com:5432/postgres"
+)
+
 def get_service_config(
     service_name: str,
     default_port: int,
@@ -37,7 +42,8 @@ def get_service_config(
     """Helper to generate standardized config for any of the BMS microservices with centralized data paths."""
     default_db_path = os.path.join(DATA_DIR, db_filename)
     service_env_var = f"BMS_{service_name.upper().replace('-', '_')}_DB_URL"
-    master_db_url = os.getenv("SUPABASE_DB_URL", os.getenv("DATABASE_URL"))
+    use_sqlite = os.getenv("BMS_USE_SQLITE", "false").lower() in ("1", "true", "yes")
+    master_db_url = None if use_sqlite else os.getenv("SUPABASE_DB_URL", os.getenv("DATABASE_URL", DEFAULT_SUPABASE_POOLER_URL))
     
     db_url = os.getenv(service_env_var, master_db_url or f"sqlite:///{default_db_path}")
     port = int(os.getenv("PORT", default_port)) if service_name == "gateway" else int(os.getenv(f"BMS_{service_name.upper().replace('-', '_')}_PORT", default_port))

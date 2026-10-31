@@ -65,8 +65,13 @@ import {
 } from './components/Stat6EnterpriseWorkspace';
 
 const getApiBase = (): string => {
-  const envVal = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_BASE_URL;
-  if (!envVal) return "http://127.0.0.1:8000/api/v1";
+  const envVal = (import.meta as any).env?.VITE_API_BASE || (import.meta as any).env?.VITE_API_BASE_URL || (import.meta as any).env?.VITE_API_URL;
+  if (!envVal) {
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return `${window.location.origin}/api/v1`;
+    }
+    return "http://127.0.0.1:8000/api/v1";
+  }
   let base = String(envVal).trim();
   if (!base.startsWith("http://") && !base.startsWith("https://")) {
     base = `https://${base}`;
@@ -507,7 +512,7 @@ export default function App() {
     try {
       await fetch(`${API_BASE}/automation/hitl/${hitlId}/decision`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ decision, decision_notes: `Processed by active session user` })
       });
       fetchScheduledTasks();
@@ -519,7 +524,7 @@ export default function App() {
   const fetchScheduledTasks = async () => {
     setIsLoadingTasks(true);
     try {
-      const res = await fetch(`${API_BASE}/automation/tasks`);
+      const res = await fetch(`${API_BASE}/automation/tasks`, { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -564,7 +569,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/automation/tasks/schedule`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify(payloadBody)
       });
       if (res.ok) {
@@ -586,7 +591,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/automation/hitl/${hitlId}/decision`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           decision,
           decision_notes: `Authorized in STAT6 Governance Dashboard`
@@ -605,7 +610,8 @@ export default function App() {
   const handleForceExecuteTask = async (taskId: string) => {
     try {
       const res = await fetch(`${API_BASE}/automation/tasks/${taskId}/execute?force=true`, {
-        method: 'POST'
+        method: 'POST',
+        headers: getHeaders()
       });
       const data = await res.json();
       setSchedulerNotification(`Execution Result: ${data.status}`);
@@ -619,7 +625,8 @@ export default function App() {
   const handleRunSchedulerTick = async () => {
     try {
       const res = await fetch(`${API_BASE}/automation/scheduler/tick`, {
-        method: 'POST'
+        method: 'POST',
+        headers: getHeaders()
       });
       const data = await res.json();
       setSchedulerNotification(`Scheduler Tick: ${data.tasks_checked} tasks evaluated, ${data.executions?.length || 0} executed.`);
@@ -646,7 +653,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/crm/leads`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           first_name,
           last_name,
@@ -672,7 +679,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/crm/leads/${leadId}/convert`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ deal_title: `${leadName} Enterprise Expansion`, deal_amount: 95000 })
       });
       if (res.ok) {
@@ -692,7 +699,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/crm/deals`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           title: dealFormData.title,
           company_id: companies[0]?.id || null,
@@ -713,7 +720,7 @@ export default function App() {
   };
 
   const handleConvertDealToInvoice = async (dealId: string) => {
-    const res = await fetch(`${API_BASE}/crm/deals/${dealId}/convert-to-invoice`, { method: 'POST' });
+    const res = await fetch(`${API_BASE}/crm/deals/${dealId}/convert-to-invoice`, { method: 'POST', headers: getHeaders() });
     if (res.ok) {
       notifyUser('1-Click Deal-to-Invoice: Sales Invoice dispatched to Finance & Accounting!');
       refreshAllData();
@@ -767,6 +774,7 @@ export default function App() {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('stat6_jwt_token', token);
       window.localStorage.setItem('stat6_user_id', user.id);
+      window.localStorage.setItem('stat6_org_id', (user as any).org_id || 'org-acroflow-main');
       window.localStorage.setItem('stat6_user_role', user.role || 'ADMIN');
       window.localStorage.setItem('stat6_user_persona', user.persona || 'ADMIN');
       window.localStorage.setItem('stat6_user_name', user.full_name || user.email);
@@ -831,6 +839,7 @@ export default function App() {
         if (typeof window !== 'undefined') {
           if (data.access_token) window.localStorage.setItem('stat6_jwt_token', data.access_token);
           if (u.id) window.localStorage.setItem('stat6_user_id', u.id);
+          window.localStorage.setItem('stat6_org_id', data.org?.id || u.org_id || 'org-acroflow-main');
           window.localStorage.setItem('stat6_user_role', u.role || 'ADMIN');
           window.localStorage.setItem('stat6_user_persona', u.persona || u.role || 'ADMIN');
         }
@@ -997,10 +1006,11 @@ export default function App() {
 
   // Fetch initial live data across microservices via Central API Gateway
   const refreshAllData = () => {
-    fetch(`${API_BASE}/overview`).then(r => r.json()).then(setOverviewData).catch(() => {});
-    fetch(`${API_BASE}/crm/deals`).then(r => r.json()).then(data => { if (Array.isArray(data)) setDeals(data); }).catch(() => {});
-    fetch(`${API_BASE}/crm/companies`).then(r => r.json()).then(data => { if (Array.isArray(data)) setCompanies(data); }).catch(() => {});
-    fetch(`${API_BASE}/crm/leads`).then(r => r.json()).then(data => {
+    const hdrs = getHeaders();
+    fetch(`${API_BASE}/overview`, { headers: hdrs }).then(r => r.json()).then(setOverviewData).catch(() => {});
+    fetch(`${API_BASE}/crm/deals`, { headers: hdrs }).then(r => r.json()).then(data => { if (Array.isArray(data)) setDeals(data); }).catch(() => {});
+    fetch(`${API_BASE}/crm/companies`, { headers: hdrs }).then(r => r.json()).then(data => { if (Array.isArray(data)) setCompanies(data); }).catch(() => {});
+    fetch(`${API_BASE}/crm/leads`, { headers: hdrs }).then(r => r.json()).then(data => {
       if (Array.isArray(data)) {
         setLeadsData(data.map((l: any) => ({
           id: l.id,
@@ -1016,8 +1026,8 @@ export default function App() {
         })));
       }
     }).catch(() => {});
-    fetch(`${API_BASE}/marketing/campaigns`).then(r => r.json()).then(data => setMarketingData(Array.isArray(data) ? data : [])).catch(() => {});
-    fetch(`${API_BASE}/projects/tasks`, { headers: getHeaders() }).then(r => r.json()).then(tasks => {
+    fetch(`${API_BASE}/marketing/campaigns`, { headers: hdrs }).then(r => r.json()).then(data => setMarketingData(Array.isArray(data) ? data : [])).catch(() => {});
+    fetch(`${API_BASE}/projects/tasks`, { headers: hdrs }).then(r => r.json()).then(tasks => {
       if (Array.isArray(tasks)) {
         setJiraIssues(tasks.map((t: any) => ({
           id: t.id,
@@ -1038,25 +1048,25 @@ export default function App() {
       }
     }).catch(() => {});
     Promise.all([
-      fetch(`${API_BASE}/hr/employees`).then(r => r.json()).catch(() => []),
-      fetch(`${API_BASE}/hr/departments`).then(r => r.json()).catch(() => [])
+      fetch(`${API_BASE}/hr/employees`, { headers: hdrs }).then(r => r.json()).catch(() => []),
+      fetch(`${API_BASE}/hr/departments`, { headers: hdrs }).then(r => r.json()).catch(() => [])
     ]).then(([emps, depts]) => {
       setHrData({
         employees: Array.isArray(emps) ? emps : (emps?.employees || []),
         departments: Array.isArray(depts) ? depts : []
       });
     });
-    fetch(`${API_BASE}/finance/invoices`).then(r => r.json()).then(data => {
+    fetch(`${API_BASE}/finance/invoices`, { headers: hdrs }).then(r => r.json()).then(data => {
       setFinanceData({ invoices: Array.isArray(data) ? data : (data?.invoices || []) });
     }).catch(() => {});
-    fetch(`${API_BASE}/inventory/products`).then(r => r.json()).then(data => {
+    fetch(`${API_BASE}/inventory/products`, { headers: hdrs }).then(r => r.json()).then(data => {
       setInventoryData({ products: Array.isArray(data) ? data : (data?.products || []) });
     }).catch(() => {});
-    fetch(`${API_BASE}/procurement/orders`).then(r => r.json()).then(data => {
+    fetch(`${API_BASE}/procurement/orders`, { headers: hdrs }).then(r => r.json()).then(data => {
       setProcurementData({ purchase_orders: Array.isArray(data) ? data : (data?.purchase_orders || []) });
     }).catch(() => {});
-    fetch(`${API_BASE}/support/tickets`).then(r => r.json()).then(data => { if (Array.isArray(data)) setSupportTickets(data); }).catch(() => {});
-    fetch(`${API_BASE}/automation/rules`).then(r => r.json()).then(data => { if (Array.isArray(data)) setAutomations(data); }).catch(() => {});
+    fetch(`${API_BASE}/support/tickets`, { headers: hdrs }).then(r => r.json()).then(data => { if (Array.isArray(data)) setSupportTickets(data); }).catch(() => {});
+    fetch(`${API_BASE}/automation/rules`, { headers: hdrs }).then(r => r.json()).then(data => { if (Array.isArray(data)) setAutomations(data); }).catch(() => {});
     fetchScheduledTasks();
   };
 

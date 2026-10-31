@@ -493,9 +493,25 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
     };
 
     try {
+      const token = localStorage.getItem('stat6_token') || '';
+      const orgId = localStorage.getItem('stat6_org_id') || 'org-acroflow-enterprise';
+      let userRole = 'ADMIN';
+      let userPersona = 'ADMIN';
+      try {
+        const storedUser = JSON.parse(localStorage.getItem('stat6_user') || '{}');
+        userRole = storedUser.role || 'ADMIN';
+        userPersona = storedUser.persona || 'ADMIN';
+      } catch {}
+
       const resp = await fetch(`${apiBase}/ai/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'X-Org-Id': orgId,
+          'X-User-Role': userRole,
+          'X-User-Persona': userPersona
+        },
         body: JSON.stringify({
           message: textToSend,
           conversation_id: userMsgId,
@@ -611,9 +627,15 @@ export const OmniCopilotDock: React.FC<OmniCopilotDockProps> = ({
     }));
 
     try {
+      const token = localStorage.getItem('stat6_token') || '';
+      const orgId = localStorage.getItem('stat6_org_id') || 'org-acroflow-enterprise';
       await fetch(`${apiBase}/automation/hitl/${hitlId}/decision`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'X-Org-Id': orgId
+        },
         body: JSON.stringify({
           decision,
           decision_notes: `Processed via Omni-Copilot Dock by active session user`

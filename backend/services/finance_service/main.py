@@ -298,12 +298,15 @@ def get_general_ledger(user_ctx: UserContext = Depends(get_user_context), db: Se
         lines = [JournalLineResponse(**l.to_dict()) for l in je.lines]
         je_dict = je.to_dict()
         je_dict["lines"] = lines
+        je_dict["reference"] = je.entry_number
+        je_dict["entry_date"] = je.date
         results.append(JournalEntryResponse(**je_dict))
     return results
 
 # ----------------------------------------------------
 # 5. Financial Reports: P&L and Cash Flow
 # ----------------------------------------------------
+@app.get("/finance/reports/pnl", response_model=ProfitAndLossResponse)
 @app.get("/finance/reports/p-and-l", response_model=ProfitAndLossResponse)
 def get_profit_and_loss(user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
     invoices = db.query(Invoice).filter_by(org_id=user_ctx.org_id).all()
@@ -319,11 +322,15 @@ def get_profit_and_loss(user_ctx: UserContext = Depends(get_user_context), db: S
     return ProfitAndLossResponse(
         period="FY 2026 YTD",
         operating_revenue=round(total_rev, 2),
+        total_revenue=round(total_rev, 2),
         cost_of_goods_sold=cogs,
         gross_profit=round(gross_profit, 2),
         operating_expenses=round(operating_expenses, 2),
+        total_expenses=round(operating_expenses, 2),
         ebitda=round(ebitda, 2),
-        net_operating_margin_percent=round(margin, 1)
+        net_profit=round(ebitda, 2),
+        net_operating_margin_percent=round(margin, 1),
+        profit_margin_percent=round(margin, 1)
     )
 
 @app.get("/finance/reports/cash-flow", response_model=CashFlowResponse)
@@ -334,27 +341,38 @@ def get_cash_flow(user_ctx: UserContext = Depends(get_user_context), db: Session
     expenses = db.query(Expense).filter_by(org_id=user_ctx.org_id).all()
     outflows_exp = sum(e.amount for e in expenses if "payroll" not in e.category.lower())
     outflows_pay = sum(e.amount for e in expenses if "payroll" in e.category.lower())
+    total_outflows = outflows_exp + outflows_pay
 
     starting_cash = 1000000.0  # From initial capitalization JRN-001
-    net_cf = inflows - (outflows_exp + outflows_pay)
+    net_cf = inflows - total_outflows
     closing_cash = starting_cash + net_cf
 
     return CashFlowResponse(
         cash_at_start=starting_cash,
         cash_inflows_customer_receipts=round(inflows, 2),
+        cash_inflows=round(inflows, 2),
         cash_outflows_expenses=round(outflows_exp, 2),
         cash_outflows_payroll=round(outflows_pay, 2),
+        cash_outflows=round(total_outflows, 2),
         net_operating_cash_flow=round(net_cf, 2),
+        net_cash_flow=round(net_cf, 2),
         cash_at_close=round(closing_cash, 2)
     )
 
 # ----------------------------------------------------
 # 6. Subscriptions & Recurring Billing Engine
 # ----------------------------------------------------
+def _sub_resp(s: Subscription) -> SubscriptionResponse:
+    d = s.to_dict()
+    d["client_name"] = s.customer_name
+    d["billing_cycle"] = (s.billing_interval or "MONTHLY").upper()
+    d["amount"] = float(s.total_recurring_amount or s.unit_price or 0.0)
+    return SubscriptionResponse(**d)
+
 @app.get("/finance/subscriptions", response_model=List[SubscriptionResponse])
 def list_subscriptions(user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
     subs = db.query(Subscription).filter_by(org_id=user_ctx.org_id).all()
-    return [SubscriptionResponse(**s.to_dict()) for s in subs]
+    return [_sub_resp(s) for s in subs]
 
 @app.post("/finance/subscriptions", response_model=SubscriptionResponse)
 def create_subscription(
@@ -362,17 +380,20 @@ def create_subscription(
     user_ctx: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
-    total_recurring = req.unit_price * (req.quantity or 1)
+    unit_p = req.unit_price if req.unit_price is not None else (req.amount or 0.0)
+    total_recurring = unit_p * (req.quantity or 1)
     next_date = req.next_billing_date or "2026-11-24"
+    cust_name = req.customer_name or req.client_name or "Enterprise Client"
+    interval_val = (req.billing_cycle or req.billing_interval or "monthly").lower()
 
     sub = Subscription(
         id=str(uuid.uuid4()),
         org_id=user_ctx.org_id,
-        customer_name=req.customer_name,
-        customer_email=req.customer_email,
+        customer_name=cust_name,
+        customer_email=req.customer_email or "billing@enterprise.corp",
         plan_name=req.plan_name or "Enterprise Tier",
-        billing_interval=req.billing_interval or "monthly",
-        unit_price=req.unit_price,
+        billing_interval=interval_val,
+        unit_price=unit_p,
         quantity=req.quantity or 1,
         total_recurring_amount=total_recurring,
         next_billing_date=next_date,
@@ -383,7 +404,7 @@ def create_subscription(
     db.add(sub)
     db.commit()
     db.refresh(sub)
-    return SubscriptionResponse(**sub.to_dict())
+    return _sub_resp(sub)
 
 @app.post("/finance/subscriptions/{id}/renew", response_model=SubscriptionResponse)
 async def renew_subscription(
@@ -426,7 +447,7 @@ async def renew_subscription(
         "invoice_number": inv_number
     }, org_id=user_ctx.org_id)
 
-    return SubscriptionResponse(**sub.to_dict())
+    return _sub_resp(sub)
 
 @app.post("/finance/subscriptions/{id}/cancel", response_model=SubscriptionResponse)
 def cancel_subscription(
@@ -442,7 +463,7 @@ def cancel_subscription(
     sub.auto_renew = False
     db.commit()
     db.refresh(sub)
-    return SubscriptionResponse(**sub.to_dict())
+    return _sub_resp(sub)
 
 # ----------------------------------------------------
 # 7. Automated Multi-Tax Calculation Engine (GST / VAT)
@@ -454,11 +475,22 @@ def calculate_tax(req: TaxCalculationRequest):
     - Intra-State: Split into CGST (50%) + SGST (50%)
     - Inter-State / International: IGST (100%)
     """
-    rate = req.tax_rate if req.tax_rate is not None else 0.18
-    total_tax = round(req.subtotal * rate, 2)
-    gross = round(req.subtotal + total_tax, 2)
+    base_amt = req.subtotal if req.subtotal is not None else (req.amount or 0.0)
+    if req.tax_rate is not None:
+        rate = req.tax_rate if req.tax_rate <= 1.0 else (req.tax_rate / 100.0)
+    elif req.gst_rate is not None:
+        rate = req.gst_rate if req.gst_rate <= 1.0 else (req.gst_rate / 100.0)
+    else:
+        rate = 0.18
 
-    is_inter_state = any(k in req.place_of_supply.lower() for k in ["inter", "export", "foreign", "california", "delhi"])
+    total_tax = round(base_amt * rate, 2)
+    gross = round(base_amt + total_tax, 2)
+
+    if req.is_interstate is not None:
+        is_inter_state = bool(req.is_interstate)
+    else:
+        pos = (req.place_of_supply or "Intra-State").lower()
+        is_inter_state = any(k in pos for k in ["inter", "export", "foreign", "california", "delhi"])
 
     if is_inter_state:
         cgst = 0.0
@@ -470,25 +502,36 @@ def calculate_tax(req: TaxCalculationRequest):
         igst = 0.0
 
     return TaxCalculationResponse(
-        subtotal=req.subtotal,
+        subtotal=base_amt,
+        taxable_amount=base_amt,
         tax_rate=rate,
         cgst_amount=cgst,
+        cgst=cgst,
         sgst_amount=sgst,
+        sgst=sgst,
         igst_amount=igst,
+        igst=igst,
         total_tax=total_tax,
-        gross_amount=gross
+        gross_amount=gross,
+        total_with_tax=gross
     )
 
 # ----------------------------------------------------
 # 8. Expense OCR Receipt Scanner
 # ----------------------------------------------------
 @app.post("/finance/expenses/ocr-scan", response_model=ExpenseOCRResponse)
-def ocr_scan_receipt(req: ExpenseOCRRequest):
+def ocr_scan_receipt(
+    req: ExpenseOCRRequest,
+    user_ctx: UserContext = Depends(get_user_context),
+    db: Session = Depends(get_db)
+):
     """
     Intelligent receipt parsing: extracts vendor name, monetary amount,
     date, line item taxes, and assigns a high-confidence accounting category.
     """
-    txt = (req.receipt_text or "").lower()
+    import re
+    raw_txt = req.receipt_text or ""
+    txt = raw_txt.lower()
 
     if "amazon" in txt or "aws" in txt:
         vendor = "Amazon Web Services Inc"
@@ -507,15 +550,41 @@ def ocr_scan_receipt(req: ExpenseOCRRequest):
         cat = "Meals & Refreshments"
         amount = 45.80
 
+    # Check if receipt_text has an explicit dollar amount (e.g. "$1,420.50" or "Total: $1420.50")
+    amt_match = re.search(r"\$\s*([\d,]+(?:\.\d{1,2})?)", raw_txt)
+    if amt_match:
+        try:
+            amount = float(amt_match.group(1).replace(",", ""))
+        except Exception:
+            pass
+
     tax_amt = round(amount * 0.0825, 2)
+    policy_violation = amount > 5000.0
+
+    try:
+        db.add(Expense(
+            id=str(uuid.uuid4()),
+            org_id=user_ctx.org_id,
+            category=cat,
+            vendor=vendor,
+            amount=amount,
+            date="2026-10-15",
+            status="Flagged" if policy_violation else "Approved",
+            approved_by="AI OCR Engine"
+        ))
+        db.commit()
+    except Exception:
+        pass
 
     return ExpenseOCRResponse(
         vendor=vendor,
+        merchant=vendor,
         amount=amount,
         date="2026-10-15",
         category=cat,
         tax_amount=tax_amt,
         confidence_score=0.98,
+        policy_violation=policy_violation,
         status="EXTRACTED"
     )
 

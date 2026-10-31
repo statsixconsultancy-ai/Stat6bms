@@ -45,6 +45,15 @@ def test_all_health():
 
 def test_support_service():
     print("[2/6] Testing Support Desk, SLA Countdown & Escalation...")
+    tks = sup_client.get("/support/tickets").json() if sup_client.get("/support/tickets").status_code == 200 else []
+    if len(tks) < 3:
+        for idx in range(len(tks), 3):
+            sup_client.post("/support/tickets", json={
+                "customer_name": f"Customer {idx+1}",
+                "customer_email": f"cust{idx+1}@enterprise.com",
+                "subject": f"Inquiry {idx+1}",
+                "priority": "Medium"
+            })
     sla = sup_client.get("/support/analytics/sla").json()
     assert sla["total_tickets"] >= 3
     assert sla["sla_compliance_rate_percent"] > 0
@@ -114,6 +123,16 @@ def test_compliance_service():
 def test_automation_service():
     print("[5/6] Testing WHEN-IF-DO Automation Rules Engine...")
     rules = auto_client.get("/automation/rules").json()
+    if len(rules) < 3:
+        rule_defs = [
+            {"name": "Auto-Provision Project on High Value Deal", "trigger_event": "deal.won", "condition_code": "amount >= 100000", "action_type": "PROVISION_PROJECT"},
+            {"name": "Alert Incident Swarm on Urgent Ticket", "trigger_event": "ticket.urgent", "condition_code": "True", "action_type": "POST_CHAT_ALERT"},
+            {"name": "Draft Reorder PO on Low Stock", "trigger_event": "stock.low", "condition_code": "current_stock <= reorder_level", "action_type": "DRAFT_PURCHASE_ORDER"}
+        ]
+        for idx, r in enumerate(rule_defs):
+            if idx >= len(rules):
+                auto_client.post("/automation/rules", json=r)
+        rules = auto_client.get("/automation/rules").json()
     assert len(rules) >= 3
 
     # Send matching event deal.won

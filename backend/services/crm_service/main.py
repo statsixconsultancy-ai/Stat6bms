@@ -346,13 +346,15 @@ async def create_deal(
     user_ctx: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
+    deal_title = req.title or req.name or "Enterprise Deal"
+    deal_amount = float(req.amount if req.amount is not None else (req.value if req.value is not None else 0.0))
     deal = Deal(
         id=str(uuid.uuid4()),
         org_id=user_ctx.org_id,
-        title=req.title,
+        title=deal_title,
         company_id=req.company_id,
         contact_id=req.contact_id,
-        amount=req.amount,
+        amount=deal_amount,
         stage=req.stage or "Prospecting",
         probability=req.probability or 20,
         close_date=req.close_date or "2026-12-31",
@@ -514,10 +516,11 @@ def get_crm_summary(user_ctx: UserContext = Depends(get_user_context), db: Sessi
 # 7. CPQ Native E-Signature Workflow (Zoho Sign Alt)
 # ----------------------------------------------------
 @app.post("/crm/quotes/{quote_id}/e-sign", response_model=QuoteESignResponse)
+@app.post("/crm/quotes/{quote_id}/sign", response_model=QuoteESignResponse)
 async def execute_quote_e_signature(
     quote_id: str,
-    req: QuoteESignRequest,
     request: Request,
+    req: Optional[QuoteESignRequest] = None,
     user_ctx: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
@@ -526,20 +529,24 @@ async def execute_quote_e_signature(
     Generates SHA-256 audit hash and transitions the quote to 'Accepted'.
     """
     import hashlib
+    if req is None:
+        req = QuoteESignRequest()
+    signer_name = req.signer_name or "Authorized Signatory"
+    signer_email = req.signer_email or user_ctx.email or "client@acroflow.enterprise"
     quote = db.query(Quote).filter_by(id=quote_id, org_id=user_ctx.org_id).first()
     if not quote:
         raise HTTPException(status_code=404, detail="Quotation not found")
 
     client_ip = request.client.host if request.client else "127.0.0.1"
     signed_timestamp = datetime.utcnow().isoformat()
-    audit_payload = f"{quote.quote_number}:{req.signer_email}:{signed_timestamp}:{client_ip}:{quote.total_amount}"
+    audit_payload = f"{quote.quote_number}:{signer_email}:{signed_timestamp}:{client_ip}:{quote.total_amount}"
     audit_hash = hashlib.sha256(audit_payload.encode("utf-8")).hexdigest()
 
     quote.status = "Accepted"
     quote.e_signature_status = "signed"
     quote.e_signature_audit = {
-        "signer_name": req.signer_name,
-        "signer_email": req.signer_email,
+        "signer_name": signer_name,
+        "signer_email": signer_email,
         "signed_at": signed_timestamp,
         "ip_address": client_ip,
         "audit_hash": audit_hash,
@@ -553,16 +560,17 @@ async def execute_quote_e_signature(
         "quote_number": quote.quote_number,
         "deal_id": quote.deal_id,
         "total_amount": quote.total_amount,
-        "signer": req.signer_name
+        "signer": signer_name
     })
 
     return QuoteESignResponse(
         quote_id=quote.id,
         quote_number=quote.quote_number,
+        status="Signed",
         e_signature_status="Signed",
         signed_at=signed_timestamp,
         audit_hash=audit_hash,
-        signer_email=req.signer_email,
+        signer_email=signer_email,
         e_signature_audit_hash=audit_hash,
         message="Cryptographic e-signature verified and recorded in audit ledger"
     )
@@ -583,6 +591,38 @@ async def convert_deal_to_invoice(
 
     invoice_id = f"INV-{uuid.uuid4().hex[:6].upper()}"
     deal.converted_invoice_id = invoice_id
+
+    try:
+        from sqlalchemy import text
+        comp_name = deal.company.name if deal.company else deal.title
+        subtotal = round(float(deal.amount or 0.0), 2)
+        tax_amt = round(subtotal * 0.10, 2)
+        total_amt = round(subtotal + tax_amt, 2)
+        now_dt = datetime.utcnow()
+        db.execute(text("""
+            INSERT INTO fin_invoices (id, org_id, invoice_number, client_name, client_id, deal_id, issue_date, due_date, status, subtotal, tax_amount, total_amount, balance_due, created_at, updated_at)
+            VALUES (:id, :org_id, :inv_num, :client_name, :client_id, :deal_id, :issue_date, :due_date, :status, :subtotal, :tax_amt, :total_amt, :balance_due, :created_at, :updated_at)
+        """), {
+            "id": str(uuid.uuid4()),
+            "org_id": user_ctx.org_id,
+            "inv_num": invoice_id,
+            "client_name": comp_name,
+            "client_id": deal.company_id,
+            "deal_id": deal.id,
+            "issue_date": now_dt.strftime("%Y-%m-%d"),
+            "due_date": "2026-12-31",
+            "status": "Sent",
+            "subtotal": subtotal,
+            "tax_amt": tax_amt,
+            "total_amt": total_amt,
+            "balance_due": total_amt,
+            "created_at": now_dt,
+            "updated_at": now_dt
+        })
+    except Exception as e:
+        import logging
+        logging.getLogger("crm").warning("Could not auto-create finance invoice: %s", e)
+
     db.commit()
 
     await event_bus.publish("deal.converted_to_invoice", {
@@ -614,6 +654,51 @@ async def convert_deal_to_project(
 
     project_id = f"PRJ-{uuid.uuid4().hex[:6].upper()}"
     deal.converted_project_id = project_id
+
+    try:
+        from sqlalchemy import text
+        comp_name = deal.company.name if deal.company else "Enterprise Client"
+        prj_code = f"PRJ-{uuid.uuid4().hex[:4].upper()}"
+        now_dt = datetime.utcnow()
+        db.execute(text("""
+            INSERT INTO prj_projects (id, org_id, code, name, description, client_name, status, budget, spent_amount, manager, start_date, target_end_date, created_at, updated_at)
+            VALUES (:id, :org_id, :code, :name, :description, :client_name, :status, :budget, :spent_amount, :manager, :start_date, :target_end_date, :created_at, :updated_at)
+        """), {
+            "id": project_id,
+            "org_id": user_ctx.org_id,
+            "code": prj_code,
+            "name": f"{deal.title} — Delivery",
+            "description": f"Auto-provisioned delivery project from CRM Deal '{deal.title}'",
+            "client_name": comp_name,
+            "status": "In Progress",
+            "budget": float(deal.amount or 50000.0),
+            "spent_amount": 0.0,
+            "manager": "Delivery Lead",
+            "start_date": now_dt.strftime("%Y-%m-%d"),
+            "target_end_date": "2026-12-31",
+            "created_at": now_dt,
+            "updated_at": now_dt
+        })
+        sprint_id = str(uuid.uuid4())
+        db.execute(text("""
+            INSERT INTO prj_sprints (id, org_id, project_id, name, goal, status, start_date, end_date, created_at, updated_at)
+            VALUES (:id, :org_id, :project_id, :name, :goal, :status, :start_date, :end_date, :created_at, :updated_at)
+        """), {
+            "id": sprint_id,
+            "org_id": user_ctx.org_id,
+            "project_id": project_id,
+            "name": "Sprint 1 — Onboarding & Kickoff",
+            "goal": "Initial architecture, discovery, and stakeholder kickoff",
+            "status": "Active",
+            "start_date": now_dt.strftime("%Y-%m-%d"),
+            "end_date": "2026-11-30",
+            "created_at": now_dt,
+            "updated_at": now_dt
+        })
+    except Exception as e:
+        import logging
+        logging.getLogger("crm").warning("Could not auto-create project: %s", e)
+
     db.commit()
 
     await event_bus.publish("deal.converted_to_project", {

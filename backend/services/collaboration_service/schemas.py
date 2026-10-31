@@ -18,7 +18,10 @@ class ChatChannelResponse(BaseModel):
     unread_count: int = 0
 
 class ChatMessageCreate(BaseModel):
-    message: str
+    message: Optional[str] = None
+    content: Optional[str] = None
+    sender_name: Optional[str] = None
+    sender_role: Optional[str] = None
     message_type: Optional[str] = "text"
     card_type: Optional[str] = "none"
     card_data: Optional[Dict[str, Any]] = None
@@ -29,7 +32,10 @@ class ChatMessageResponse(BaseModel):
     channel_id: str
     user_id: str
     user_name: str
+    sender_name: str = ""
+    sender_role: str = "ADMIN"
     message: str
+    content: str = ""
     message_type: str
     card_type: str = "none"
     card_data: Optional[Dict[str, Any]] = None
@@ -55,8 +61,9 @@ class AnnouncementResponse(BaseModel):
 class CalendarEventCreate(BaseModel):
     title: str
     description: Optional[str] = None
-    start_time: datetime
-    end_time: datetime
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    organizer: Optional[str] = None
     event_type: str = "meeting" # meeting, milestone, leave, follow_up
     attendees: Optional[List[str]] = []
     location_or_link: Optional[str] = None
@@ -73,8 +80,10 @@ class CalendarEventResponse(BaseModel):
     location_or_link: Optional[str] = None
 
 class RecordNoteCreate(BaseModel):
-    entity_type: str
-    entity_id: str
+    entity_type: Optional[str] = "General"
+    entity_id: Optional[str] = "global"
+    title: Optional[str] = None
+    author_name: Optional[str] = None
     content: str
     mentions: Optional[List[str]] = []
     attachments: Optional[List[str]] = []
@@ -84,6 +93,7 @@ class RecordNoteResponse(BaseModel):
     org_id: str
     entity_type: str
     entity_id: str
+    title: str = ""
     author_id: str
     author_name: str
     content: str

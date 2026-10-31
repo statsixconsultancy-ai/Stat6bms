@@ -111,10 +111,12 @@ class CompanyDetailResponse(CompanyResponse):
 
 # --- Deal Schemas ---
 class DealCreate(BaseModel):
-    title: str
+    title: Optional[str] = None
+    name: Optional[str] = None
     company_id: Optional[str] = None
     contact_id: Optional[str] = None
-    amount: float
+    amount: Optional[float] = None
+    value: Optional[float] = None
     stage: Optional[str] = "Prospecting"
     probability: Optional[int] = 20
     close_date: Optional[str] = None
@@ -208,8 +210,8 @@ class QuoteResponse(BaseModel):
     items: List[QuoteItemResponse] = []
 
 class QuoteESignRequest(BaseModel):
-    signer_name: str
-    signer_email: str
+    signer_name: Optional[str] = "Authorized Signatory"
+    signer_email: Optional[str] = "client@acroflow.enterprise"
     signer_role: Optional[str] = "Executive"
     ip_address: Optional[str] = "127.0.0.1"
     otp_code: Optional[str] = "123456"
@@ -218,6 +220,7 @@ class QuoteESignRequest(BaseModel):
 class QuoteESignResponse(BaseModel):
     quote_id: str
     quote_number: str
+    status: Optional[str] = "Signed"
     e_signature_status: str
     signed_at: str
     audit_hash: str

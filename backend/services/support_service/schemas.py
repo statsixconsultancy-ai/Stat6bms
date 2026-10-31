@@ -41,6 +41,7 @@ class TicketResponse(BaseModel):
     sla_target_hours: float
     elapsed_hours: float
     is_breached: bool
+    sla_status: str = "ON_TRACK"
     sla_policy: Optional[str] = "Standard B2B SLA"
     resolution_due_at: Optional[str] = None
     csat_score: Optional[int] = None
@@ -65,6 +66,8 @@ class Customer360ContextResponse(BaseModel):
     average_csat: float
     recent_tickets: List[TicketResponse] = []
     associated_crm_context: dict = {}
+    crm_context: dict = {}
+    finance_context: dict = {}
 
 class KBArticleCreate(BaseModel):
     title: str

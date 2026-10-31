@@ -119,11 +119,15 @@ class BurndownResponse(BaseModel):
 
 # --- Gantt & Critical Path Method (CPM) ---
 class CriticalPathNode(BaseModel):
+    task_id: Optional[str] = None
     task_key: str
+    issue_key: Optional[str] = None
     title: str
     duration_days: int
     early_start: int
     early_finish: int
+    earliest_start: Optional[int] = None
+    earliest_finish: Optional[int] = None
     late_start: int
     late_finish: int
     total_float: int
@@ -133,14 +137,17 @@ class CriticalPathResponse(BaseModel):
     project_id: str
     project_name: str
     project_duration_days: int
+    total_duration_hours: Optional[int] = 0
     critical_path_tasks: List[str]
     nodes: List[CriticalPathNode]
+    schedule: List[CriticalPathNode] = []
 
 # --- Milestone Schemas ---
 class MilestoneCreate(BaseModel):
     name: str
-    due_date: str
-    amount: Optional[float] = 0.0
+    due_date: Optional[str] = "2026-12-31"
+    amount: Optional[float] = None
+    billing_amount: Optional[float] = None
 
 class MilestoneResponse(BaseModel):
     id: str
@@ -149,16 +156,21 @@ class MilestoneResponse(BaseModel):
     name: str
     due_date: str
     amount: float
+    billing_amount: float = 0.0
     status: str
+    auto_billed_invoice_id: Optional[str] = None
 
 # --- Project Financials (PSA Real-Time Costing) ---
 class ProjectFinancialsResponse(BaseModel):
     project_id: str
     project_name: str
     contract_budget: float
+    budget: Optional[float] = 0.0
     total_billable_revenue: float
     total_labor_cost: float
     total_expenses: float
+    total_cost: Optional[float] = 0.0
     net_profit: float
     profit_margin_percent: float
+    gross_margin_percent: Optional[float] = 0.0
 

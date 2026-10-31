@@ -2,10 +2,13 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
 
 class RegisterRequest(BaseModel):
-    org_name: str
-    org_slug: str
-    admin_name: str
-    admin_email: str
+    org_name: Optional[str] = None
+    org_slug: Optional[str] = None
+    admin_name: Optional[str] = None
+    admin_email: Optional[str] = None
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    role: Optional[str] = None
     password: str
     persona: str = "ADMIN"
     currency: Optional[str] = "USD"

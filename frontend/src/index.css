@@ -85,7 +85,29 @@
 }
 
 /* High-Contrast Visibility Optimizations for Dark Mode */
-.dark .text-slate-500 {
+.dark .bg-white:not(.keep-white) {
+  background-color: #131c2e !important;
+}
+
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/60,
+.dark .bg-slate-50\/70 {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+.dark .text-black,
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-500,
+.dark .text-slate-400 {
   color: #94a3b8 !important;
 }
 
@@ -97,12 +119,14 @@
   color: #e2e8f0 !important;
 }
 
-.dark .border-slate-200 {
-  border-color: rgba(255, 255, 255, 0.08) !important;
+.dark .border-slate-200,
+.dark .border-slate-100,
+.dark .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 255, 255, 0.09) !important;
 }
 
 .dark .border-slate-300 {
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
 }
 
 /* Eliminate white buttons and white-on-white text in Dark Mode */
@@ -110,8 +134,8 @@
 .dark button.bg-slate-50,
 .dark button.bg-slate-100 {
   background-color: #1a2744 !important;
-  color: #cbd5e1 !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
 }
 
 .dark button.bg-white:hover,

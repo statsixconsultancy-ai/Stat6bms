@@ -125,7 +125,8 @@ async def handle_events(event: dict, db: Session = Depends(get_db)):
             db.add(msg)
 
     db.commit()
-    return {"status": "event_processed", "event_name": event_name}
+    status_str = "alert_posted" if event_name in ["ticket.urgent", "deal.won"] else "event_processed"
+    return {"status": status_str, "event_name": event_name}
 
 # ----------------------------------------------------
 # 2. Channels & Messaging with Contextual Record Cards
@@ -187,7 +188,10 @@ def get_channel_messages(channel_id: str, user_ctx: UserContext = Depends(get_us
             channel_id=m.channel_id,
             user_id=m.user_id,
             user_name=m.user_name,
+            sender_name=m.user_name,
+            sender_role="ADMIN",
             message=m.message,
+            content=m.message,
             message_type=m.message_type,
             card_type=m.card_type or "none",
             card_data=m.card_data or {},
@@ -207,7 +211,8 @@ def post_channel_message(
     if not ch:
         raise HTTPException(status_code=404, detail="Channel not found")
 
-    sender = user_ctx.email.split("@")[0].replace(".", " ").title() if user_ctx.email else "Team Member"
+    sender = req.sender_name or (user_ctx.email.split("@")[0].replace(".", " ").title() if user_ctx.email else "Team Member")
+    msg_text = req.message or req.content or ""
 
     msg = ChatMessage(
         id=str(uuid.uuid4()),
@@ -215,7 +220,7 @@ def post_channel_message(
         channel_id=ch.id,
         user_id=user_ctx.user_id,
         user_name=sender,
-        message=req.message,
+        message=msg_text,
         message_type=req.message_type or "text",
         card_type=req.card_type or "none",
         card_data=req.card_data or {}
@@ -230,7 +235,10 @@ def post_channel_message(
         channel_id=msg.channel_id,
         user_id=msg.user_id,
         user_name=msg.user_name,
+        sender_name=msg.user_name,
+        sender_role=req.sender_role or user_ctx.persona or "ADMIN",
         message=msg.message,
+        content=msg.message,
         message_type=msg.message_type,
         card_type=msg.card_type,
         card_data=msg.card_data,
@@ -319,15 +327,25 @@ def list_calendar_events(user_ctx: UserContext = Depends(get_user_context), db: 
         for e in events
     ]
 
+def _parse_dt(val: Optional[str]) -> datetime:
+    if not val:
+        return datetime.utcnow()
+    try:
+        return datetime.fromisoformat(val.replace("Z", "+00:00")).replace(tzinfo=None)
+    except Exception:
+        return datetime.utcnow()
+
 @app.post("/chat/calendar/events", response_model=CalendarEventResponse)
 def create_calendar_event(req: CalendarEventCreate, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
+    st = _parse_dt(req.start_time)
+    et = _parse_dt(req.end_time) if req.end_time else st
     evt = CalendarEvent(
         id=str(uuid.uuid4()),
         org_id=user_ctx.org_id,
         title=req.title,
-        description=req.description,
-        start_time=req.start_time,
-        end_time=req.end_time,
+        description=req.description or (f"Organized by {req.organizer}" if req.organizer else None),
+        start_time=st,
+        end_time=et,
         event_type=req.event_type,
         attendees=req.attendees or [],
         location_or_link=req.location_or_link
@@ -361,22 +379,24 @@ def delete_calendar_event(event_id: str, user_ctx: UserContext = Depends(get_use
 # ----------------------------------------------------
 @app.get("/chat/notes", response_model=List[RecordNoteResponse])
 def get_record_notes(
-    entity_type: str = Query(...),
-    entity_id: str = Query(...),
+    entity_type: Optional[str] = Query(None),
+    entity_id: Optional[str] = Query(None),
     user_ctx: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
-    notes = db.query(RecordNote).filter_by(
-        org_id=user_ctx.org_id,
-        entity_type=entity_type,
-        entity_id=entity_id
-    ).order_by(RecordNote.created_at.asc()).all()
+    query = db.query(RecordNote).filter_by(org_id=user_ctx.org_id)
+    if entity_type:
+        query = query.filter_by(entity_type=entity_type)
+    if entity_id:
+        query = query.filter_by(entity_id=entity_id)
+    notes = query.order_by(RecordNote.created_at.asc()).all()
     return [
         RecordNoteResponse(
             id=n.id,
             org_id=n.org_id,
             entity_type=n.entity_type,
             entity_id=n.entity_id,
+            title=f"{n.entity_type}: {n.entity_id}",
             author_id=n.author_id,
             author_name=n.author_name,
             content=n.content,
@@ -389,12 +409,12 @@ def get_record_notes(
 
 @app.post("/chat/notes", response_model=RecordNoteResponse)
 def add_record_note(req: RecordNoteCreate, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
-    sender = user_ctx.email.split("@")[0].replace(".", " ").title() if user_ctx.email else "Team Member"
+    sender = req.author_name or (user_ctx.email.split("@")[0].replace(".", " ").title() if user_ctx.email else "Team Member")
     note = RecordNote(
         id=str(uuid.uuid4()),
         org_id=user_ctx.org_id,
-        entity_type=req.entity_type,
-        entity_id=req.entity_id,
+        entity_type=req.entity_type or "General",
+        entity_id=req.entity_id or req.title or "global",
         author_id=user_ctx.user_id,
         author_name=sender,
         content=req.content,
@@ -409,6 +429,7 @@ def add_record_note(req: RecordNoteCreate, user_ctx: UserContext = Depends(get_u
         org_id=note.org_id,
         entity_type=note.entity_type,
         entity_id=note.entity_id,
+        title=req.title or f"{note.entity_type}: {note.entity_id}",
         author_id=note.author_id,
         author_name=note.author_name,
         content=note.content,

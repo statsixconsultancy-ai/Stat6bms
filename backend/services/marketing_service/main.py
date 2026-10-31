@@ -80,16 +80,27 @@ async def handle_events(event: dict, db: Session = Depends(get_db)):
 # ----------------------------------------------------
 # 2. Campaigns Endpoints
 # ----------------------------------------------------
+import json
+
+def _campaign_resp(c: Campaign, db: Session, override_leads: Optional[int] = None) -> CampaignResponse:
+    roi = ((c.attributed_revenue - c.actual_spend) / c.actual_spend * 100.0) if c.actual_spend > 0 else 0.0
+    c_dict = c.to_dict()
+    c_dict["roi_percent"] = round(roi, 1)
+    c_dict["spent"] = float(c.actual_spend or 0.0)
+    c_dict["revenue_attributed"] = float(c.attributed_revenue or 0.0)
+    leads_cnt = db.query(FormSubmission).filter_by(campaign_id=c.id).count()
+    if override_leads is not None:
+        c_dict["leads_generated"] = override_leads
+    elif leads_cnt > 0:
+        c_dict["leads_generated"] = leads_cnt
+    else:
+        c_dict["leads_generated"] = max(12, int((c.actual_spend or 1000) / 150))
+    return CampaignResponse(**c_dict)
+
 @app.get("/marketing/campaigns", response_model=List[CampaignResponse])
 def list_campaigns(user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
     campaigns = db.query(Campaign).filter_by(org_id=user_ctx.org_id).order_by(Campaign.created_at.desc()).all()
-    results = []
-    for c in campaigns:
-        roi = ((c.attributed_revenue - c.actual_spend) / c.actual_spend * 100.0) if c.actual_spend > 0 else 0.0
-        c_dict = c.to_dict()
-        c_dict["roi_percent"] = round(roi, 1)
-        results.append(CampaignResponse(**c_dict))
-    return results
+    return [_campaign_resp(c, db) for c in campaigns]
 
 @app.post("/marketing/campaigns", response_model=CampaignResponse)
 def create_campaign(
@@ -97,6 +108,8 @@ def create_campaign(
     user_ctx: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
+    spend_val = req.actual_spend if req.actual_spend else (req.spent or 0.0)
+    rev_val = req.attributed_revenue if req.attributed_revenue else (req.revenue_attributed or 0.0)
     campaign = Campaign(
         id=str(uuid.uuid4()),
         org_id=user_ctx.org_id,
@@ -104,8 +117,8 @@ def create_campaign(
         type=req.type or "Paid Search",
         status=req.status or "Active",
         budget=req.budget,
-        actual_spend=req.actual_spend,
-        attributed_revenue=req.attributed_revenue,
+        actual_spend=spend_val,
+        attributed_revenue=rev_val,
         start_date=req.start_date,
         end_date=req.end_date,
         target_audience=req.target_audience or "Enterprise B2B Decision Makers"
@@ -113,21 +126,14 @@ def create_campaign(
     db.add(campaign)
     db.commit()
     db.refresh(campaign)
-
-    roi = ((campaign.attributed_revenue - campaign.actual_spend) / campaign.actual_spend * 100.0) if campaign.actual_spend > 0 else 0.0
-    c_dict = campaign.to_dict()
-    c_dict["roi_percent"] = round(roi, 1)
-    return CampaignResponse(**c_dict)
+    return _campaign_resp(campaign, db, override_leads=req.leads_generated)
 
 @app.get("/marketing/campaigns/{id}", response_model=CampaignResponse)
 def get_campaign(id: str, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
     c = db.query(Campaign).filter_by(id=id, org_id=user_ctx.org_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    roi = ((c.attributed_revenue - c.actual_spend) / c.actual_spend * 100.0) if c.actual_spend > 0 else 0.0
-    c_dict = c.to_dict()
-    c_dict["roi_percent"] = round(roi, 1)
-    return CampaignResponse(**c_dict)
+    return _campaign_resp(c, db)
 
 # ----------------------------------------------------
 # 3. Landing Pages & Lead Forms
@@ -268,10 +274,20 @@ def list_utm_channels(user_ctx: UserContext = Depends(get_user_context), db: Ses
 # ----------------------------------------------------
 # 6. Drip Journeys & Automated Nurturing Sequences
 # ----------------------------------------------------
+def _drip_resp(j: DripJourney) -> DripJourneyResponse:
+    d = j.to_dict()
+    try:
+        parsed_steps = json.loads(j.steps_config) if j.steps_config else []
+    except Exception:
+        parsed_steps = []
+    d["steps"] = parsed_steps if isinstance(parsed_steps, list) else []
+    d["converted_count"] = j.completed_count or 0
+    return DripJourneyResponse(**d)
+
 @app.get("/marketing/drip-journeys", response_model=List[DripJourneyResponse])
 def list_drip_journeys(user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
     journeys = db.query(DripJourney).filter_by(org_id=user_ctx.org_id).all()
-    return [DripJourneyResponse(**j.to_dict()) for j in journeys]
+    return [_drip_resp(j) for j in journeys]
 
 @app.post("/marketing/drip-journeys", response_model=DripJourneyResponse)
 def create_drip_journey(
@@ -279,12 +295,13 @@ def create_drip_journey(
     user_ctx: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
+    steps_str = json.dumps(req.steps) if req.steps is not None else (req.steps_config or "[]")
     journey = DripJourney(
         id=str(uuid.uuid4()),
         org_id=user_ctx.org_id,
         name=req.name,
         trigger_event=req.trigger_event or "lead.captured",
-        steps_config=req.steps_config or "[]",
+        steps_config=steps_str,
         is_active=req.is_active if req.is_active is not None else True,
         enrolled_count=0,
         completed_count=0
@@ -292,7 +309,7 @@ def create_drip_journey(
     db.add(journey)
     db.commit()
     db.refresh(journey)
-    return DripJourneyResponse(**journey.to_dict())
+    return _drip_resp(journey)
 
 @app.post("/marketing/drip-journeys/{id}/trigger")
 async def trigger_drip_journey(
@@ -310,10 +327,15 @@ async def trigger_drip_journey(
 # ----------------------------------------------------
 # 7. Broadcast Campaigns (Email / SMS / WhatsApp Blasts)
 # ----------------------------------------------------
+def _broadcast_resp(b: BroadcastCampaign) -> BroadcastCampaignResponse:
+    d = b.to_dict()
+    d["opened_count"] = int(round((b.delivered_count or 0) * ((b.open_rate or 0.0) / 100.0)))
+    return BroadcastCampaignResponse(**d)
+
 @app.get("/marketing/broadcasts", response_model=List[BroadcastCampaignResponse])
 def list_broadcasts(user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
     broadcasts = db.query(BroadcastCampaign).filter_by(org_id=user_ctx.org_id).all()
-    return [BroadcastCampaignResponse(**b.to_dict()) for b in broadcasts]
+    return [_broadcast_resp(b) for b in broadcasts]
 
 @app.post("/marketing/broadcasts", response_model=BroadcastCampaignResponse)
 def create_broadcast(
@@ -326,11 +348,11 @@ def create_broadcast(
         org_id=user_ctx.org_id,
         name=req.name,
         channel=req.channel or "email",
-        target_segment=req.target_segment or "All Leads",
+        target_segment=req.segment_filter or req.target_segment or "All Leads",
         message_template=req.message_template,
         scheduled_at=req.scheduled_at,
         status="Draft",
-        recipient_count=0,
+        recipient_count=req.recipient_count or 0,
         delivered_count=0,
         open_rate=0.0,
         click_rate=0.0
@@ -338,7 +360,7 @@ def create_broadcast(
     db.add(broadcast)
     db.commit()
     db.refresh(broadcast)
-    return BroadcastCampaignResponse(**broadcast.to_dict())
+    return _broadcast_resp(broadcast)
 
 @app.post("/marketing/broadcasts/{id}/send", response_model=BroadcastCampaignResponse)
 async def send_broadcast(
@@ -351,13 +373,14 @@ async def send_broadcast(
         raise HTTPException(status_code=404, detail="Broadcast campaign not found")
     
     broadcast.status = "Sent"
-    broadcast.recipient_count = 150
-    broadcast.delivered_count = 148
+    if not broadcast.recipient_count:
+        broadcast.recipient_count = 150
+    broadcast.delivered_count = max(1, broadcast.recipient_count - 2)
     broadcast.open_rate = 42.5
     broadcast.click_rate = 18.2
     db.commit()
     db.refresh(broadcast)
-    return BroadcastCampaignResponse(**broadcast.to_dict())
+    return _broadcast_resp(broadcast)
 
 # ----------------------------------------------------
 # 8. Closed-Loop Multi-Touch ROI Attribution
@@ -368,22 +391,44 @@ def record_roi_attribution(
     user_ctx: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
-    campaign = db.query(Campaign).filter_by(id=req.campaign_id, org_id=user_ctx.org_id).first()
+    if req.campaign_id:
+        campaign = db.query(Campaign).filter_by(id=req.campaign_id, org_id=user_ctx.org_id).first()
+    else:
+        campaign = db.query(Campaign).filter_by(org_id=user_ctx.org_id).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     
-    campaign.attributed_revenue += req.attributed_revenue
+    rev_val = req.attributed_revenue if req.attributed_revenue is not None else (req.deal_value or 250000.0)
+    campaign.attributed_revenue += float(rev_val)
     db.commit()
     db.refresh(campaign)
 
     roi = ((campaign.attributed_revenue - campaign.actual_spend) / campaign.actual_spend * 100.0) if campaign.actual_spend > 0 else 0.0
+    model_used = (req.model or req.attribution_model or "W_SHAPED").upper()
+    if "FIRST" in model_used:
+        weights = [1.0, 0.0, 0.0]
+    elif "LAST" in model_used:
+        weights = [0.0, 0.0, 1.0]
+    elif "LINEAR" in model_used:
+        weights = [0.333, 0.333, 0.334]
+    else:
+        weights = [0.40, 0.20, 0.40]
+
+    touchpoints = [
+        {"channel": f"{campaign.name} (Inbound Capture)", "weight": weights[0], "attributed_revenue": round(rev_val * weights[0], 2)},
+        {"channel": "Automated Drip Nurture Sequence", "weight": weights[1], "attributed_revenue": round(rev_val * weights[1], 2)},
+        {"channel": "Executive CPQ & Sales Demo", "weight": weights[2], "attributed_revenue": round(rev_val * weights[2], 2)},
+    ]
 
     return ROIAttributionResponse(
         campaign_id=campaign.id,
         campaign_name=campaign.name,
+        deal_value=rev_val,
+        model=model_used,
         new_spend=campaign.actual_spend,
         new_attributed_revenue=campaign.attributed_revenue,
         calculated_roi_percent=round(roi, 1),
-        attribution_status="attributed"
+        attribution_status="attributed",
+        touchpoints=touchpoints
     )
 

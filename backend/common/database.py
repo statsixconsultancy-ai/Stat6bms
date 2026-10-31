@@ -14,8 +14,11 @@ logger = logging.getLogger("DatabaseManager")
 class DatabaseManager:
     """Encapsulates engine creation and session generation per microservice with automatic Supabase pooler failover."""
     
-    # Class-level cache of the successfully verified PostgreSQL URL
+    # Class-level cache of the successfully verified PostgreSQL URL, shared engine, and synced schema metadata
     _RESOLVED_PG_URL: Optional[str] = None
+    _SHARED_PG_ENGINE = None
+    _EXISTING_PG_TABLES_AND_COLS: Optional[dict] = None
+    _SYNCED_PG_TABLES: set = set()
 
     def __init__(self, database_url: str):
         # Normalize postgres:// to postgresql:// for Supabase compatibility
@@ -32,7 +35,7 @@ class DatabaseManager:
                 poolclass=StaticPool if ":memory:" in database_url else None
             )
         else:
-            # PostgreSQL configuration with connection pooling and intelligent Supabase resolution
+            # PostgreSQL configuration with shared connection pooling and intelligent Supabase resolution
             engine = self._create_pg_engine(database_url)
             if engine is not None:
                 self.engine = engine
@@ -53,25 +56,16 @@ class DatabaseManager:
         self.init_tables()
 
     def _create_pg_engine(self, original_url: str):
-        # 1. If we already established a verified working URL across microservices, prioritize it immediately
-        if DatabaseManager._RESOLVED_PG_URL:
-            try:
-                engine = create_engine(
-                    DatabaseManager._RESOLVED_PG_URL,
-                    pool_size=10,
-                    max_overflow=20,
-                    pool_pre_ping=True
-                )
-                self.database_url = DatabaseManager._RESOLVED_PG_URL
-                return engine
-            except Exception:
-                pass
+        # 1. If we already established a shared PostgreSQL engine across microservices, reuse it immediately
+        if DatabaseManager._SHARED_PG_ENGINE is not None and DatabaseManager._RESOLVED_PG_URL:
+            self.database_url = DatabaseManager._RESOLVED_PG_URL
+            return DatabaseManager._SHARED_PG_ENGINE
 
         candidate_urls = []
         parsed = urlparse(original_url)
         is_direct_supabase = bool(re.match(r"^db\.([a-z0-9]+)\.supabase\.co$", parsed.hostname or ""))
         
-        # Check if direct hostname has IPv4 address reachable in under 50ms
+        # Check if direct hostname has IPv4 address reachable
         can_use_direct = False
         if is_direct_supabase:
             try:
@@ -109,8 +103,8 @@ class DatabaseManager:
             try:
                 engine = create_engine(
                     url,
-                    pool_size=10,
-                    max_overflow=20,
+                    pool_size=8,
+                    max_overflow=16,
                     pool_pre_ping=True,
                     connect_args={"connect_timeout": 5}
                 )
@@ -118,6 +112,7 @@ class DatabaseManager:
                     logger.info(f"Connected to PostgreSQL at: {url.split('@')[-1] if '@' in url else url}")
                 self.database_url = url
                 DatabaseManager._RESOLVED_PG_URL = url
+                DatabaseManager._SHARED_PG_ENGINE = engine
                 return engine
             except Exception as e:
                 logger.debug(f"Connection attempt to {url.split('@')[-1] if '@' in url else url} failed: {e}")
@@ -127,28 +122,45 @@ class DatabaseManager:
 
     def init_tables(self, base_class=Base):
         """Create all tables registered to the service's models and safely add any new columns."""
-        base_class.metadata.create_all(bind=self.engine)
         try:
             from sqlalchemy import inspect, text
             if self.engine.dialect.name == "postgresql":
+                unsynced_tables = [
+                    (t_name, tbl)
+                    for t_name, tbl in base_class.metadata.tables.items()
+                    if t_name not in DatabaseManager._SYNCED_PG_TABLES
+                ]
+                if not unsynced_tables:
+                    return
+
                 with self.engine.begin() as conn:
-                    rows = conn.execute(
-                        text("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'")
-                    ).fetchall()
-                    existing_cols_by_table = {}
-                    for t_name, c_name in rows:
-                        existing_cols_by_table.setdefault(t_name, set()).add(c_name)
-                    
-                    for table_name, table in base_class.metadata.tables.items():
-                        if table_name in existing_cols_by_table:
-                            curr_cols = existing_cols_by_table[table_name]
-                            for col in table.columns:
-                                if col.name not in curr_cols:
-                                    col_type = col.type.compile(self.engine.dialect)
-                                    conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {col_type}'))
-                                    curr_cols.add(col.name)
+                    if DatabaseManager._EXISTING_PG_TABLES_AND_COLS is None:
+                        rows = conn.execute(
+                            text("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'")
+                        ).fetchall()
+                        existing_map = {}
+                        for t_name, c_name in rows:
+                            existing_map.setdefault(t_name, set()).add(c_name)
+                        DatabaseManager._EXISTING_PG_TABLES_AND_COLS = existing_map
+
+                    existing_cols_by_table = DatabaseManager._EXISTING_PG_TABLES_AND_COLS
+                    missing_tables = [tbl for t_name, tbl in unsynced_tables if t_name not in existing_cols_by_table]
+                    if missing_tables:
+                        base_class.metadata.create_all(bind=conn, tables=missing_tables, checkfirst=True)
+                        for tbl in missing_tables:
+                            existing_cols_by_table[tbl.name] = {c.name for c in tbl.columns}
+
+                    for table_name, table in unsynced_tables:
+                        curr_cols = existing_cols_by_table.setdefault(table_name, set())
+                        for col in table.columns:
+                            if col.name not in curr_cols:
+                                col_type = col.type.compile(self.engine.dialect)
+                                conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {col_type}'))
+                                curr_cols.add(col.name)
+                        DatabaseManager._SYNCED_PG_TABLES.add(table_name)
             else:
                 # SQLite fallback
+                base_class.metadata.create_all(bind=self.engine)
                 inspector = inspect(self.engine)
                 existing_tables = set(inspector.get_table_names())
                 with self.engine.begin() as conn:

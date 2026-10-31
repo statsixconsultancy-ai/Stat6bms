@@ -415,7 +415,12 @@ async def global_omnisearch(request: Request, q: str = Query("", min_length=1)):
             })
 
     for tkt in _safe_list(8):
-        if ql in str(tkt.get("ticket_number", "")).lower() or ql in str(tkt.get("subject", "")).lower() or ql in str(tkt.get("customer_name", "")).lower():
+        if (
+            ql in str(tkt.get("ticket_number", "")).lower()
+            or ql in str(tkt.get("subject", "")).lower()
+            or ql in str(tkt.get("customer_name", "")).lower()
+            or ql in str(tkt.get("customer_email", "")).lower()
+        ):
             aggregated.append({
                 "id": tkt.get("id"),
                 "title": f"[{tkt.get('ticket_number')}] {tkt.get('subject')}",
@@ -439,6 +444,7 @@ class CustomReportRequest(BaseModel):
     status_filter: Optional[str] = None
 
 
+@app.get("/api/v1/analytics/dashboard")
 @app.get("/api/v1/analytics/bi-dashboard")
 async def get_bi_dashboard(request: Request):
     """
@@ -650,8 +656,9 @@ async def build_custom_report(req: CustomReportRequest, request: Request):
 # ----------------------------------------------------
 # 7. Dynamic Reverse Proxy Forwarder
 # ----------------------------------------------------
+@app.api_route("/api/v1/{module}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 @app.api_route("/api/v1/{module}/{rest_of_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-async def reverse_proxy_handler(module: str, rest_of_path: str, request: Request):
+async def reverse_proxy_handler(module: str, request: Request, rest_of_path: str = ""):
     """
     Dynamically routes HTTP traffic to target microservice:
     1. Inspects JWT token and validates user context.
@@ -677,6 +684,7 @@ async def reverse_proxy_handler(module: str, rest_of_path: str, request: Request
     forward_headers["x-user-id"] = user_ctx.user_id
     forward_headers["x-org-id"] = user_ctx.org_id
     forward_headers["x-user-role"] = user_ctx.role
+    forward_headers["x-user-persona"] = user_ctx.persona
     if user_ctx.email:
         forward_headers["x-user-email"] = user_ctx.email
     forward_headers["x-gateway-signature"] = gateway_sig

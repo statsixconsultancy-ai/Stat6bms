@@ -31,8 +31,17 @@ def test_crm_health():
 def test_pipeline_summary():
     print("[2/6] Testing Executive Commercial Summary (/crm/summary)...")
     resp = client.get("/crm/summary")
+    data = resp.json() if resp.status_code == 200 else {}
+    if data.get("total_deals_count", 0) < 3:
+        for idx in range(3):
+            client.post("/crm/deals", json={
+                "title": f"Enterprise Deal {idx+1}",
+                "amount": 50000.0 * (idx + 1),
+                "stage": "Won" if idx == 0 else "Negotiation"
+            })
+        resp = client.get("/crm/summary")
+        data = resp.json()
     assert resp.status_code == 200
-    data = resp.json()
     assert "total_pipeline_value" in data
     assert "won_revenue" in data
     assert data["total_pipeline_value"] > 0

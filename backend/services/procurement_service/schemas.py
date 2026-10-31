@@ -48,9 +48,11 @@ class PurchaseOrderResponse(BaseModel):
     vendor_id: str
     vendor_name: Optional[str] = None
     status: str
+    three_way_match_status: Optional[str] = None
     total_amount: float
     order_date: str
     expected_delivery: Optional[str] = None
+    expected_delivery_date: Optional[str] = None
 
 # --- Goods Receipt Note (GRN) ---
 class GRNCreate(BaseModel):
@@ -93,6 +95,7 @@ class ThreeWayMatchResponse(BaseModel):
     match_status: str  # MATCHED_APPROVED, QUANTITY_MISMATCH, AMOUNT_MISMATCH, INCOMPLETE_DOCUMENTATION
     ordered_quantity: int
     received_quantity: int
+    grn_accepted_qty: int = 0
     po_amount: float
     billed_amount: float
     is_verified: bool
@@ -101,8 +104,10 @@ class ThreeWayMatchResponse(BaseModel):
 # --- Purchase Requisition Schemas ---
 class RequisitionCreate(BaseModel):
     department: str
-    requested_by: str
-    estimated_budget: float
+    requested_by: Optional[str] = "Department Lead"
+    estimated_budget: Optional[float] = None
+    estimated_cost: Optional[float] = None
+    item_description: Optional[str] = None
     notes: Optional[str] = None
 
 class RequisitionResponse(BaseModel):
@@ -112,13 +117,18 @@ class RequisitionResponse(BaseModel):
     department: str
     requested_by: str
     estimated_budget: float
+    estimated_cost: float = 0.0
+    item_description: str = ""
     status: str
     notes: Optional[str] = None
 
 # --- RFQ (Request for Quotation) Schemas ---
 class RFQCreate(BaseModel):
     title: str
-    deadline: str
+    deadline: Optional[str] = "2026-11-25"
+    item_specification: Optional[str] = None
+    target_quantity: Optional[int] = 100
+    estimated_budget: Optional[float] = 50000.0
 
 class RFQBidSubmitRequest(BaseModel):
     vendor_id: str
@@ -133,6 +143,9 @@ class RFQResponse(BaseModel):
     rfq_number: str
     title: str
     deadline: str
+    item_specification: str = "Enterprise Grade Spec"
+    target_quantity: int = 100
+    estimated_budget: float = 50000.0
     status: str
     vendor_bids: str
 
@@ -144,9 +157,14 @@ class VendorScorecardResponse(BaseModel):
     vendor_id: str
     vendor_name: str
     rating: float
+    overall_score: float = 95.0
     total_pos_issued: int
+    total_pos: int = 0
     matched_pos_count: int
     fulfillment_compliance_rate_percent: float
+    on_time_delivery_rate: float = 98.0
+    quality_acceptance_rate: float = 99.2
     average_lead_time_days: int
     tier_classification: str
+    tier_recommendation: str = "Tier 1 Strategic Partner"
 

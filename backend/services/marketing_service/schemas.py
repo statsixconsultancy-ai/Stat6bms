@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel
 
 # --- Campaign Schemas ---
@@ -8,10 +8,16 @@ class CampaignCreate(BaseModel):
     status: Optional[str] = "Active"
     budget: float = 0.0
     actual_spend: float = 0.0
+    spent: Optional[float] = None
     attributed_revenue: float = 0.0
+    revenue_attributed: Optional[float] = None
+    leads_generated: Optional[int] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     target_audience: Optional[str] = "Enterprise B2B Decision Makers"
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
 
 class CampaignUpdate(BaseModel):
     name: Optional[str] = None
@@ -32,7 +38,10 @@ class CampaignResponse(BaseModel):
     status: str
     budget: float
     actual_spend: float
+    spent: float = 0.0
     attributed_revenue: float
+    revenue_attributed: float = 0.0
+    leads_generated: int = 0
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     target_audience: str
@@ -118,6 +127,7 @@ class DripJourneyCreate(BaseModel):
     name: str
     trigger_event: Optional[str] = "lead.captured"
     steps_config: Optional[str] = '[{"step": 1, "channel": "email", "delay_hours": 0, "template": "Welcome"}, {"step": 2, "channel": "whatsapp", "delay_hours": 48, "template": "Demo Invite"}]'
+    steps: Optional[List[Union[str, Dict[str, Any]]]] = None
     is_active: Optional[bool] = True
 
 class DripJourneyResponse(BaseModel):
@@ -126,14 +136,18 @@ class DripJourneyResponse(BaseModel):
     name: str
     trigger_event: str
     steps_config: str
+    steps: List[Union[str, Dict[str, Any]]] = []
     is_active: bool
     enrolled_count: int
     completed_count: int
+    converted_count: int = 0
 
 class BroadcastCampaignCreate(BaseModel):
     name: str
     channel: Optional[str] = "email"
     target_segment: Optional[str] = "All Leads"
+    segment_filter: Optional[str] = None
+    recipient_count: Optional[int] = None
     message_template: str
     scheduled_at: Optional[str] = None
 
@@ -148,22 +162,28 @@ class BroadcastCampaignResponse(BaseModel):
     status: str
     recipient_count: int
     delivered_count: int
+    opened_count: int = 0
     open_rate: float
     click_rate: float
 
 class ROIAttributionRequest(BaseModel):
-    campaign_id: str
+    campaign_id: Optional[str] = None
     deal_id: Optional[str] = None
     invoice_id: Optional[str] = None
-    attributed_revenue: float
+    attributed_revenue: Optional[float] = None
+    deal_value: Optional[float] = None
     attribution_model: Optional[str] = "last_touch"  # first_touch, last_touch, linear
+    model: Optional[str] = None
     notes: Optional[str] = None
 
 class ROIAttributionResponse(BaseModel):
     campaign_id: str
     campaign_name: str
+    deal_value: Optional[float] = None
+    model: Optional[str] = None
     new_spend: float
     new_attributed_revenue: float
     calculated_roi_percent: float
     attribution_status: str = "attributed"
+    touchpoints: List[Dict[str, Any]] = []
 

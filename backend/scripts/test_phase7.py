@@ -30,6 +30,30 @@ def test_hr_health():
 
 def test_headcount_analytics():
     print("[2/6] Testing Headcount & Compensation Analytics (/hr/analytics/headcount)...")
+    depts_resp = client.get("/hr/departments")
+    depts = depts_resp.json() if depts_resp.status_code == 200 else []
+    if len(depts) < 4:
+        dept_names = ["Engineering", "Product & Operations", "Sales & Marketing", "Finance & Legal"]
+        for idx, dname in enumerate(dept_names):
+            if idx >= len(depts):
+                client.post("/hr/departments", json={"name": dname, "code": f"DPT-0{idx+1}", "manager_name": "Executive Head"})
+        depts_resp = client.get("/hr/departments")
+        depts = depts_resp.json()
+
+    emps_resp = client.get("/hr/employees")
+    emps = emps_resp.json() if emps_resp.status_code == 200 else []
+    if len(emps) < 4:
+        for idx in range(len(emps), 4):
+            dept_id = depts[idx % len(depts)]["id"] if depts else None
+            client.post("/hr/employees", json={
+                "first_name": f"Staff{idx+1}",
+                "last_name": "Member",
+                "email": f"staff{idx+1}.test@acroflow.enterprise",
+                "job_title": "Enterprise Specialist",
+                "department_id": dept_id,
+                "salary_annual": 125000.0
+            })
+
     resp = client.get("/hr/analytics/headcount")
     assert resp.status_code == 200
     data = resp.json()

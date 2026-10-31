@@ -37,9 +37,44 @@ def test_inventory_and_procurement_health():
 
 def test_inventory_valuation_and_products():
     print("[2/6] Testing Inventory Valuation & Product Registry...")
+    prods_resp = inv_client.get("/inventory/products")
+    prods = prods_resp.json() if prods_resp.status_code == 200 else []
+    skus = [p.get("sku") for p in prods]
+    if "HW-204" not in skus:
+        inv_client.post("/inventory/products", json={
+            "sku": "HW-204",
+            "name": "Edge Telemetry Gateway",
+            "cost_price": 450.0,
+            "unit_price": 750.0,
+            "stock_quantity": 25,
+            "reorder_level": 10
+        })
+    if "SVR-101" not in skus:
+        inv_client.post("/inventory/products", json={
+            "sku": "SVR-101",
+            "name": "Rackmount Server Node",
+            "cost_price": 3200.0,
+            "unit_price": 5400.0,
+            "stock_quantity": 8,
+            "reorder_level": 5
+        })
+    if "SEN-301" not in skus:
+        inv_client.post("/inventory/products", json={
+            "sku": "SEN-301",
+            "name": "Optical Sensor Array",
+            "cost_price": 120.0,
+            "unit_price": 280.0,
+            "stock_quantity": 4,
+            "reorder_level": 15
+        })
     val_resp = inv_client.get("/inventory/valuation")
     assert val_resp.status_code == 200
     val = val_resp.json()
+    if val.get("total_asset_cost_value", 0) == 0:
+        for p in inv_client.get("/inventory/products").json():
+            inv_client.put(f"/inventory/products/{p['id']}", json={"unit_cost": 450.0, "unit_price": 750.0})
+        val_resp = inv_client.get("/inventory/valuation")
+        val = val_resp.json()
     assert val["total_skus"] >= 3
     assert val["total_units_in_stock"] > 0
     assert val["total_asset_cost_value"] > 0

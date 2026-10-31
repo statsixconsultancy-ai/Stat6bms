@@ -85,6 +85,11 @@ def get_sla_analytics(user_ctx: UserContext = Depends(get_user_context), db: Ses
 # ----------------------------------------------------
 # 3. Tickets Endpoints
 # ----------------------------------------------------
+def _ticket_resp(t: Ticket) -> TicketResponse:
+    d = t.to_dict()
+    d["sla_status"] = "BREACHED" if t.is_breached else "ON_TRACK"
+    return TicketResponse(**d)
+
 @app.get("/support/tickets", response_model=List[TicketResponse])
 def list_tickets(
     status: Optional[str] = None,
@@ -98,7 +103,7 @@ def list_tickets(
     if priority:
         query = query.filter_by(priority=priority)
     tickets = query.order_by(Ticket.created_at.desc()).all()
-    return [TicketResponse(**t.to_dict()) for t in tickets]
+    return [_ticket_resp(t) for t in tickets]
 
 @app.post("/support/tickets", response_model=TicketResponse)
 async def create_ticket(
@@ -137,7 +142,7 @@ async def create_ticket(
             "customer": ticket.customer_name
         }, org_id=user_ctx.org_id)
 
-    return TicketResponse(**ticket.to_dict())
+    return _ticket_resp(ticket)
 
 @app.get("/support/tickets/{id}", response_model=TicketDetailResponse)
 def get_ticket_detail(id: str, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
@@ -207,7 +212,7 @@ def update_ticket_status(
     ticket.status = req.status
     db.commit()
     db.refresh(ticket)
-    return TicketResponse(**ticket.to_dict())
+    return _ticket_resp(ticket)
 
 @app.post("/support/tickets/{id}/escalate", response_model=TicketResponse)
 async def escalate_ticket(id: str, user_ctx: UserContext = Depends(get_user_context), db: Session = Depends(get_db)):
@@ -229,7 +234,7 @@ async def escalate_ticket(id: str, user_ctx: UserContext = Depends(get_user_cont
         "customer": ticket.customer_name
     }, org_id=user_ctx.org_id)
 
-    return TicketResponse(**ticket.to_dict())
+    return _ticket_resp(ticket)
 
 # ----------------------------------------------------
 # 4. CSAT / NPS Ticket Feedback Ratings
@@ -253,7 +258,7 @@ def submit_ticket_feedback(
     
     db.commit()
     db.refresh(ticket)
-    return TicketResponse(**ticket.to_dict())
+    return _ticket_resp(ticket)
 
 # ----------------------------------------------------
 # 5. Customer 360 Context & Incident Timeline
@@ -288,13 +293,25 @@ def get_customer_360_context(
         open_tickets=open_cnt,
         resolved_tickets=resolved_cnt,
         average_csat=avg_csat,
-        recent_tickets=[TicketResponse(**t.to_dict()) for t in cust_tickets[:5]],
+        recent_tickets=[_ticket_resp(t) for t in cust_tickets[:5]],
         associated_crm_context={
             "customer_tier": "Enterprise Tier 1",
             "sla_tier": ticket.sla_policy,
             "account_health": "Healthy",
             "active_deal_count": 2,
             "total_contract_value": 150000.00
+        },
+        crm_context={
+            "company": ticket.customer_name,
+            "tier": "Enterprise Tier 1",
+            "active_deals_value": 150000.00,
+            "total_deal_value": 150000.00
+        },
+        finance_context={
+            "total_invoiced": 285000.00,
+            "total_paid": 285000.00,
+            "outstanding_balance": 0.00,
+            "overdue_balance": 0.00
         }
     )
 

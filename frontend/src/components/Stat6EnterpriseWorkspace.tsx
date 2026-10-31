@@ -3548,7 +3548,7 @@ export const ExternalPersonaPortalWorkspace: React.FC<WorkspaceProps & {
     fetch(`${apiBase}/crm/quotes`, { headers: getHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setQuotes(d)).catch(() => {});
     fetch(`${apiBase}/finance/invoices`, { headers: getHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setInvoices(d)).catch(() => {});
     fetch(`${apiBase}/support/tickets`, { headers: getHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setTickets(d)).catch(() => {});
-    fetch(`${apiBase}/procurement/purchase-orders`, { headers: getHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setPos(d)).catch(() => {});
+    fetch(`${apiBase}/procurement/orders`, { headers: getHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setPos(d)).catch(() => {});
     fetch(`${apiBase}/procurement/rfqs`, { headers: getHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setRfqs(d)).catch(() => {});
     fetch(`${apiBase}/crm/leads`, { headers: getHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setLeads(d)).catch(() => {});
   };
@@ -3556,7 +3556,7 @@ export const ExternalPersonaPortalWorkspace: React.FC<WorkspaceProps & {
   useEffect(() => { loadPortalData(); }, [apiBase, persona]);
 
   const handleCustomerSignQuote = async (quoteId: string) => {
-    const res = await fetch(`${apiBase}/crm/quotes/${quoteId}/sign`, {
+    const res = await fetch(`${apiBase}/crm/quotes/${quoteId}/e-sign`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ signer_name: 'Viktor Korsakov (Customer Portal)', signer_email: 'customer@nexusrobotics.io', signer_ip: '198.51.100.42' })
